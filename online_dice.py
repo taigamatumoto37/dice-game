@@ -188,14 +188,22 @@ me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p
 st.title("⚔️ YAHTZEE TACTICS ⚔️")
 
 # --- HP表示エリア ---
+# --- HP表示エリア (修正版) ---
 c1, c2 = st.columns(2)
 for p_num in [1, 2]:
     with (c1 if p_num == 1 else c2):
         hp = data[f"hp{p_num}"]
         st.write(f"PLAYER {p_num} {'🔥' if data['turn'] == f'P{p_num}' else ''}")
-        st.write(f"HP {hp} / 150")
-        st.markdown(f"<div class='hp-bar-container'><div class='hp-bar-fill' style='width:{(hp/150)*100}%'></div></div>", unsafe_allow_html=True)
-
+        st.write(f"HP {hp} / {MAX_HP}") # ここを MAX_HP に
+        
+        # 割合計算：(現在のHP / MAX_HP) * 100
+        hp_percent = max(0, min(100, (hp / MAX_HP) * 100)) 
+        
+        st.markdown(f"""
+            <div class='hp-bar-container'>
+                <div class='hp-bar-fill' style='width:{hp_percent}%'></div>
+            </div>
+            """, unsafe_allow_html=True)
 # --- 共通：相手のダイス表示 ---
 st.write(f"### 🛡️ 相手(P{opp_id})の刻印")
 o_dice = data.get(f"{opp}_dice", [1,1,1,1,1])
@@ -439,4 +447,5 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
