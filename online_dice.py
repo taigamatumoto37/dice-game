@@ -255,7 +255,7 @@ if is_my_turn:
     
     if st.session_state.rolls > 0:
         if st.button("🎲 ダイスを振る"):
-        play_se(DICE_ROLL_SE)
+            play_se(DICE_ROLL_SE)
             st.session_state.dice = [v if st.session_state.keep[i] else random.randint(1, 6) for i, v in enumerate(st.session_state.dice)]
             st.session_state.rolls -= 1
             update_db({f"{me}_dice": st.session_state.dice})
@@ -304,6 +304,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
