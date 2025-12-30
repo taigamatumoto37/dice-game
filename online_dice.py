@@ -313,25 +313,28 @@ for idx, card in enumerate(pool):
                 update_db(upd)
                 st.rerun()
 
-# 3. 終了処理と自動リロード
-
+# 3. 終了処理とドロー
 if is_my_turn:
     if st.button("ターンを終了してドロー", key=f"end_{data['turn_count']}"):
         latest = get_data()
         deck = latest.get("deck", [])
+        current_my_hand = list(latest.get(f"{me}_hand", []))
         
         if deck:
-            # 山札の先頭から1枚引く
-            new_card = deck.pop(0) 
-            if len(hand) < 5:
-                hand.append(new_card)
-                st.session_state.hand = hand
+            # 山札から1枚引く
+            new_card = deck.pop(0)
+            if len(current_my_hand) < 5:
+                current_my_hand.append(new_card)
         
+        # 自分の手札カラムだけを更新
         update_db({
-            "deck": deck, 
-            "turn": f"P{opp_id}", 
+            "deck": deck,
+            f"{me}_hand": current_my_hand,
+            "turn": f"P{opp_id}",
             "turn_count": latest["turn_count"] + 1
         })
+        # 振った回数もリセット
+        st.session_state.rolls = 2
         st.rerun()
 # --- ここまで入れ替え ---
 
@@ -352,6 +355,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
