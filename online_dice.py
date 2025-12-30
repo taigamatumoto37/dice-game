@@ -207,37 +207,38 @@ for h_name in my_hand_from_db:
 
 sc = st.columns(3)
 for idx, card in enumerate(pool):
+    # --- 1. 判定ロジック ---
     is_ready = card.condition_func(st.session_state.dice) if (is_my_turn and any(st.session_state.dice)) else False
     is_innate = "固有" in card.name
     
-    # --- 🔵 ここから追加：タイプによる色の決定 ---
+    # --- 2. タイプの判定と色の設定 ---
     if card.type == "attack":
         type_color = "#FF5555"  # 攻撃は赤
+        type_label = "攻撃"
         type_icon = "⚔️"
     else:
         type_color = "#00FFAA"  # 回復は緑
+        type_label = "回復"
         type_icon = "💖"
     
-    # 枠線の色：固有なら金、準備完了ならタイプの色（赤or緑）、それ以外はグレー
+    # 枠線の色設定
     border_color = "#FFD700" if is_innate else (type_color if is_ready else "#555555")
-    # タイトル色：準備完了ならタイプの色、それ以外は白（固有は金）
     title_color = "#FFD700" if is_innate else (type_color if is_ready else "white")
-    
     card_class = "skill-card innate-card" if is_innate else "skill-card"
 
     with sc[idx % 3]:
-        # HTML表示部分（アイコンとラベルを追加）
+        # --- 3. カードのHTML表示 (威力表記を攻撃/回復に切り替え) ---
         st.markdown(f"""
         <div class='{card_class}' style='border-color: {border_color}; border-width: {'3px' if is_ready else '1px'};'>
             <div style='display: flex; justify-content: space-between;'>
                 <b style='color: {title_color};'>{card.name}</b>
                 <span style='font-size: 0.8em; color: {type_color};'>{type_icon}</span>
             </div>
-            <small style='color: #CCCCCC;'>威力：{card.power} | 条件：{card.cond_text}</small>
+            <small style='color: #CCCCCC;'>{type_label}：{card.power} | 条件：{card.cond_text}</small>
         </div>
         """, unsafe_allow_html=True)
         
-        # --- ボタン表示エリア (元のロジックを維持) ---
+        # --- 4. ボタン表示エリア (以下、変更なし) ---
         if st.session_state.get("is_discard_mode", False):
             if not is_innate:
                 if st.button("🗑️ 捨てる", key=f"discard_{idx}_{data['turn_count']}"):
@@ -295,6 +296,7 @@ with st.sidebar:
         st.session_state.rolls = 2
         st.session_state.is_discard_mode = False
         st.rerun()
+
 
 
 
