@@ -89,7 +89,9 @@ CARD_DB = {
     "ダブル・インパクト": Card("ダブル・インパクト", "attack", 25, check_pair, "ペア"),
     "ジャッジメント": Card("ジャッジメント", "attack", 99, lambda d: sum(d) >= 28, "合計28以上"),
     "ゼロ・グラビティ": Card("ゼロ・グラビティ", "attack", 99, lambda d: sum(d) <= 7, "合計7以下"),
-    "星屑の願い": Card("星屑の願い", "heal", 35, lambda d: len(set(d)) >= 4, "4種類以上の出目")
+    "星屑の願い": Card("星屑の願い", "heal", 35, lambda d: len(set(d)) >= 4, "4種類以上の出目"),
+    "アイアン・ウォール": Card("アイアン・ウォール", "guard", 15, lambda d: True, "無条件"),
+    "マジック・ミラー": Card("マジック・ミラー", "guard", 30, lambda d: True, "無条件"),
 }
 
 INNATE_DECK = [
@@ -175,7 +177,54 @@ for i in range(5):
     oc[i].markdown(f"<div class='dice-slot opp-dice'>{o_dice[i]}</div>", unsafe_allow_html=True)
 
 st.divider()
+# --- フェーズ情報の取得 ---
+current_phase = data.get("phase", "ATK")
+pending_dmg = data.get("pending_damage", 0)
 
+# --- 防御側の処理：相手が攻撃してきたとき ---
+if not is_my_turn and current_phase == "DEF":
+    st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージが来ます！")
+    
+    # 手札からガードカードを抽出
+    my_hand_names = data.get(f"{me}_hand", [])
+    guards = [CARD_DB[name] for name in my_hand_names if name in CARD_DB and CARD_DB[name].type == "guard"]
+    
+    cols = st.columns(len(guards) + 1 if guards else 1)
+    
+    # ガードカードを表示
+    for i, g_card in enumerate(guards):
+        with cols[i]:
+            if st.button(f"🛡️ {g_card.name}\n(軽減: {g_card.power})", key=f"guard_{i}"):
+                final_dmg = max(0, pending_dmg - g_card.power)
+                new_hand = [n for n in my_hand_names if n != g_card.name]
+                update_db({
+                    f"hp{my_id}": data[f"hp{my_id}"] - final_dmg,
+                    f"{me}_hand": new_hand,
+                    "pending_damage": 0,
+                    "phase": "ATK",
+                    "turn": f"P{my_id}", # 防御が終わったら自分のターン
+                    "turn_count": data["turn_count"] + 1
+                })
+                st.rerun()
+    
+    # ガードしない（または持っていない）場合の選択
+    with cols[-1]:
+        if st.button("そのまま受ける", type="primary"):
+            update_db({
+                f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
+                "pending_damage": 0,
+                "phase": "ATK",
+                "turn": f"P{my_id}",
+                "turn_count": data["turn_count"] + 1
+            })
+            st.rerun()
+    st.stop() # 防御中は他の操作をさせない
+
+# --- 攻撃側の待機表示 ---
+if is_my_turn and current_phase == "DEF":
+    st.info("⌛ 相手の防御選択を待っています...")
+    time.sleep(2)
+    st.rerun()
 is_my_turn = (data["turn"] == f"P{my_id}")
 
 if is_my_turn:
@@ -252,15 +301,28 @@ for idx, card in enumerate(pool):
             if is_my_turn and is_ready:
                 if st.button("発動", key=f"atk_{card.name}_{idx}_{data['turn_count']}"):
                     play_se(SE_URL)
-                    upd = {"turn": f"P{opp_id}", "turn_count": data["turn_count"] + 1}
-                    if card.type == "attack": upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - card.power
-                    else: upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
-                    if is_innate: upd[f"{me}_used_innate"] = my_used_innate + [card.name]
+                    upd = {}
+                    
+                    if card.type == "attack":
+                        # ⚔️ 攻撃の場合：ダメージを予約し、防御フェーズへ移行
+                        upd["pending_damage"] = card.power
+                        upd["phase"] = "DEF"
+                        # ※ turn はまだ変えない（攻撃側の画面で「防御待ち」を表示するため）
+                    else:
+                        # 💖 回復の場合：即座に反映し、ターン終了
+                        upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
+                        upd["turn"] = f"P{opp_id}"
+                        upd["turn_count"] = data["turn_count"] + 1
+                        st.session_state.rolls = 2
+
+                    # 使用済み処理
+                    if is_innate:
+                        upd[f"{me}_used_innate"] = my_used_innate + [card.name]
                     else:
                         new_hand = list(my_hand_from_db)
                         if card.name in new_hand: new_hand.remove(card.name)
                         upd[f"{me}_hand"] = new_hand
-                    st.session_state.rolls = 2
+                    
                     update_db(upd)
                     st.rerun()
 
@@ -290,12 +352,14 @@ with st.sidebar:
             "hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [],
             "p1_used_innate": [], "p2_used_innate": [],
             "p1_dice": [1,1,1,1,1], "p2_dice": [1,1,1,1,1],
-            "deck": new_deck, "turn": "P1", "turn_count": 0
+            "deck": new_deck, "turn": "P1", "turn_count": 0,
+            "pending_damage": 0, "phase": "ATK"  # ← ここを追加
         })
         st.session_state.dice = [0,0,0,0,0]
         st.session_state.rolls = 2
         st.session_state.is_discard_mode = False
         st.rerun()
+
 
 
 
