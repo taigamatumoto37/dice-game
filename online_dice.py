@@ -148,14 +148,19 @@ me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p
 
 st.title("⚔️ YAHTZEE TACTICS ⚔️")
 
-# --- HP表示エリア ---
+# --- HP表示エリア (数値表示付き) ---
 c1, c2 = st.columns(2)
 for p_num in [1, 2]:
     with (c1 if p_num == 1 else c2):
         hp = data[f"hp{p_num}"]
-        st.write(f"PLAYER {p_num} {'🔥' if data['turn'] == f'P{p_num}' else ''}")
-        st.write(f"HP / 100")
-        hp_percent = max(0, min(100, (hp / 100) * 100)) 
+        st.write(f"### PLAYER {p_num} {'🔥' if data['turn'] == f'P{p_num}' else ''}")
+        
+        # 数値を分かりやすく表示
+        st.markdown(f"**❤️ HP: `{hp}` / {MAX_HP}**")
+        
+        # 割合計算
+        hp_percent = max(0, min(100, (hp / MAX_HP) * 100)) 
+        
         st.markdown(f"""
             <div class='hp-bar-container'>
                 <div class='hp-bar-fill' style='width:{hp_percent}%'></div>
@@ -291,4 +296,5 @@ with st.sidebar:
         st.session_state.rolls = 2
         st.session_state.is_discard_mode = False
         st.rerun()
+
 
