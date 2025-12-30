@@ -160,6 +160,11 @@ for h in hand:
     if h in CARD_DB: pool.append(CARD_DB[h])
 
 sc = st.columns(3)
+# data[f"{me}_hand"] から現在の手札リストを取得しておく
+current_hand = list(data.get(f"{me}_hand", [])) 
+# data[f"{me}_used_innate"] から使用済み固有スキルを取得しておく
+current_used_innate = list(data.get(f"{me}_used_innate", []))
+
 for idx, card in enumerate(pool):
     # 自分のターンかつダイスがある時だけ役判定
     is_ready = card.condition_func(st.session_state.dice) if (is_my_turn and any(st.session_state.dice)) else False
@@ -172,20 +177,34 @@ for idx, card in enumerate(pool):
         </div>
         """, unsafe_allow_html=True)
         
-        # 自分のターン、かつ条件達成時のみ発動ボタン
         if is_my_turn and is_ready:
             if st.button("発動", key=f"atk_{idx}_{data['turn_count']}"):
-                upd = {"turn": f"P{opp_id}", "turn_count": data["turn_count"]+1}
-                if card.type == "attack": upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - card.power
-                else: upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
+                # --- 1. 基本の更新データ（ターン交代） ---
+                upd = {
+                    "turn": f"P{opp_id}", 
+                    "turn_count": data["turn_count"] + 1
+                }
                 
-                if "固有" in card.name:
-                    new_used = used + [card.name]
-                    upd[f"{me}_used_innate"] = [] if len(new_used) >= 3 else new_used
+                # --- 2. ダメージ・回復計算 ---
+                if card.type == "attack":
+                    upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - card.power
                 else:
-                    hand.remove(card.name)
-                    st.session_state.hand = hand
-                update_db(upd); st.rerun()
+                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
+                
+                # --- 3. 消費処理 ---
+                if "固有" in card.name:
+                    # 固有スキルの場合：使用済みリストに追加
+                    new_used = current_used_innate + [card.name]
+                    upd[f"{me}_used_innate"] = new_used
+                else:
+                    # ドローしたカードの場合：手札リストからそのカードを削除
+                    if card.name in current_hand:
+                        current_hand.remove(card.name)
+                    upd[f"{me}_hand"] = current_hand
+                
+                # --- 4. DB更新と画面更新 ---
+                update_db(upd)
+                st.rerun()
 
 # 3. 終了処理と自動リロード
 
@@ -226,4 +245,5 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
