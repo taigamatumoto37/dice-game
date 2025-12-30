@@ -106,131 +106,93 @@ for i in range(5):
 
 st.divider()
 
-# --- ターン処理 (Player 2も動けるように修正) ---
-
-# 1. 現在のターンの持ち主を確認
+# --- ターン管理 (ここから入れ替え) ---
 is_my_turn = (data["turn"] == f"P{my_id}")
 
+# 1. ターンの初期化処理
 if is_my_turn:
-    # 2. ターンが回ってきた直後の初回のみダイスを振る (turn_countで判定)
     if st.session_state.get("last_processed_turn") != data["turn_count"]:
         st.session_state.dice = [random.randint(1, 6) for _ in range(5)]
-        st.session_state.rolls_left = 2
+        st.session_state.rolls = 2
         st.session_state.keep = [False] * 5
         st.session_state.last_processed_turn = data["turn_count"]
-        # DBに自分の初期ダイスを保存して相手に見えるようにする
         update_db({f"{me}_dice": st.session_state.dice})
         st.rerun()
 
-    # --- ここからPlayer 2でも表示される操作UI ---
     st.write("### 🎲 運命の刻印")
     dc = st.columns(5)
     for i in range(5):
         dc[i].markdown(f"<div class='dice-slot'>{st.session_state.dice[i]}</div>", unsafe_allow_html=True)
         st.session_state.keep[i] = dc[i].checkbox("Keep", key=f"k{i}_{data['turn_count']}")
 
-    # 振り直しボタン
-    if st.session_state.rolls_left > 0:
-        if st.button(f"もう一度振る (残り{st.session_state.rolls_left}回)", key=f"reroll_{data['turn_count']}"):
+    if st.session_state.rolls > 0:
+        if st.button(f"もう一度振る (残り{st.session_state.rolls}回)", key=f"reroll_{data['turn_count']}"):
             for i in range(5):
-                if not st.session_state.keep[i]:
-                    st.session_state.dice[i] = random.randint(1, 6)
-            st.session_state.rolls_left -= 1
+                if not st.session_state.keep[i]: st.session_state.dice[i] = random.randint(1, 6)
+            st.session_state.rolls -= 1
             update_db({f"{me}_dice": st.session_state.dice})
             st.rerun()
-
-    # スキル表示エリア (前回の修正版をここに挿入)
-    # ... (スキルカードのループ処理) ...
-
-    # 確定・ドロー交代ボタン
-    if st.button("ターンを終了してドロー", key=f"end_turn_{data['turn_count']}"):
-        # P1なら次はP2、P2なら次はP1
-        next_player = "P2" if my_id == 1 else "P1"
-        latest = get_data()
-        new_hand = st.session_state.get("hand", [])
-        deck = latest.get("deck", [])
-        
-        if deck and len(new_hand) < 5:
-            new_hand.append(deck.pop())
-            st.session_state.hand = new_hand
-            
-        update_db({
-            "turn": next_player, 
-            "turn_count": latest["turn_count"] + 1,
-            "deck": deck
-        })
-        st.rerun()
-
 else:
-    # 相手のターンの表示
-    st.info(f"現在は相手 ({data['turn']}) のターンです。待機中...")
-    # 3秒ごとに自動更新して、自分のターンが来るのを待つ
+    # 相手のターン時は現在のダイスをクリア
+    st.session_state.dice = [0,0,0,0,0] 
+    st.info("相手のターンです。作戦を練りましょう...")
+
+st.divider()
+
+# 2. 自分のカード一覧（相手のターンでも表示）
+st.write("### ⚔️ あなたのスキル")
+used = data.get(f"{me}_used_innate", [])
+hand = st.session_state.get("hand", [])
+pool = [c for c in INNATE_DECK if c.name not in used]
+for h in hand:
+    if h in CARD_DB: pool.append(CARD_DB[h])
+
+sc = st.columns(3)
+for idx, card in enumerate(pool):
+    # 自分のターンかつダイスがある時だけ役判定
+    is_ready = card.condition_func(st.session_state.dice) if (is_my_turn and any(st.session_state.dice)) else False
+    
+    with sc[idx % 3]:
+        st.markdown(f"""
+        <div class='skill-card' style='border-color: {"#00FFAA" if is_ready else "#FF5555"};'>
+            <b style='color: {"#00FFAA" if is_ready else "white"};'>{card.name}</b><br>
+            <small>威力：{card.power} | 条件：{card.cond_text}</small>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 自分のターン、かつ条件達成時のみ発動ボタン
+        if is_my_turn and is_ready:
+            if st.button("発動", key=f"atk_{idx}_{data['turn_count']}"):
+                upd = {"turn": f"P{opp_id}", "turn_count": data["turn_count"]+1}
+                if card.type == "attack": upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - card.power
+                else: upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
+                
+                if "固有" in card.name:
+                    new_used = used + [card.name]
+                    upd[f"{me}_used_innate"] = [] if len(new_used) >= 3 else new_used
+                else:
+                    hand.remove(card.name)
+                    st.session_state.hand = hand
+                update_db(upd); st.rerun()
+
+# 3. 終了処理と自動リロード
+if is_my_turn:
+    if st.button("ターンを終了してドロー", key=f"end_{data['turn_count']}"):
+        latest = get_data()
+        deck = latest.get("deck", [])
+        if deck and len(hand) < 5:
+            hand.append(deck.pop())
+            st.session_state.hand = hand
+        update_db({"deck": deck, "turn": f"P{opp_id}", "turn_count": latest["turn_count"]+1})
+        st.rerun()
+else:
     time.sleep(3)
     st.rerun()
-
-    # --- スキル一覧 (修正版) ---
-    used = data.get(f"{me}_used_innate", [])
-    hand = st.session_state.get("hand", [])
-    
-    # 固有カードと手札を一つのリストにまとめる
-    pool = []
-    for c in INNATE_DECK:
-        if c.name not in used:
-            pool.append(c)
-    for h_name in hand:
-        if h_name in CARD_DB:
-            pool.append(CARD_DB[h_name])
-    
-    st.write("### ⚔️ 発動可能なスキル")
-    sc = st.columns(3)
-    
-    for idx, card in enumerate(pool):
-        # 現在のダイスで条件を満たしているか判定
-        is_ready = card.condition_func(st.session_state.dice)
-        
-        with sc[idx % 3]:
-            # カードの見た目を表示
-            st.markdown(f"""
-            <div class='skill-card' style='border-color: {"#00FFAA" if is_ready else "#FF5555"};'>
-                <b style='color: {"#00FFAA" if is_ready else "white"};'>{card.name}</b><br>
-                <small>威力：{card.power}</small><br>
-                <small>条件：{card.cond_text}</small>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # 条件を満たしている場合のみ、有効な「発動」ボタンを表示
-            if is_ready:
-                if st.button(f"発動：{card.name}", key=f"atk_btn_{idx}_{card.name}"):
-                    # 最新データを取得
-                    latest = get_data()
-                    upd = {"turn": f"P{opp_id}", "turn_count": latest["turn_count"] + 1}
-                    
-                    # ダメージ・回復計算
-                    if card.type == "attack":
-                        upd[f"hp{opp_id}"] = latest[f"hp{opp_id}"] - card.power
-                    else:
-                        upd[f"hp{my_id}"] = latest[f"hp{my_id}"] + card.power
-                    
-                    # 固有カードか手札カードかで処理を分ける
-                    if "固有" in card.name:
-                        new_used = used + [card.name]
-                        upd[f"{me}_used_innate"] = [] if len(new_used) >= 3 else new_used
-                    else:
-                        # 手札から使用したカードを削除
-                        hand.remove(card.name)
-                        st.session_state.hand = hand
-                    
-                    # DB更新して画面リフレッシュ
-                    update_db(upd)
-                    st.success(f"{card.name} 発動！")
-                    time.sleep(0.5)
-                    st.rerun()
-            else:
-                # 条件を満たしていない場合は無効なボタン（または案内）を表示
-                st.button("条件未達成", key=f"disabled_{idx}", disabled=True)
+# --- ここまで入れ替え ---
 # 全リセット (サイドバー)
 if st.sidebar.button("🚨 全リセット"):
     update_db({"hp1": 150, "hp2": 150, "turn": "P1", "turn_count": 0, "p1_used_innate": [], "p2_used_innate": [], "p1_dice": [1,1,1,1,1], "p2_dice": [1,1,1,1,1], "deck": ["ジェミニ・ダガー"]*10})
     st.session_state.hand = []; st.rerun()
+
 
 
