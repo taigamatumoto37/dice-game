@@ -282,7 +282,7 @@ else:
     # 相手のターン時は現在のダイスを表示のみ（または0に）
     st.info("相手のターンです。作戦を練りましょう...")
     st.session_state.dice = [0,0,0,0,0]
-# --- 2. 自分のカード一覧（DBから自分専用の手札を取得） ---
+# --- 2. 自分のカード一覧（ここを丸ごと置き換え） ---
 st.write(f"### ⚔️ PLAYER {my_id} のスキル")
 
 # DBから最新の自分専用データを取得
@@ -298,23 +298,29 @@ for h_name in my_hand_from_db:
 sc = st.columns(3)
 
 for idx, card in enumerate(pool):
-    # 自分のターンかつダイスがある時だけ役判定
+    # --- 1. 判定ロジック ---
     is_ready = card.condition_func(st.session_state.dice) if (is_my_turn and any(st.session_state.dice)) else False
+    is_innate = "固有" in card.name
     
+    # --- 2. 見た目の切り替え (金枠 or 通常) ---
+    card_class = "skill-card innate-card" if is_innate else "skill-card"
+    border_color = "#FFD700" if is_innate else ("#00FFAA" if is_ready else "#FF5555")
+    title_color = "#FFD700" if is_innate else ("#00FFAA" if is_ready else "white")
+
     with sc[idx % 3]:
+        # --- 3. カードのHTML表示 ---
         st.markdown(f"""
-        <div class='skill-card' style='border-color: {"#00FFAA" if is_ready else "#FF5555"};'>
-            <b style='color: {"#00FFAA" if is_ready else "white"};'>{card.name}</b><br>
-            <small>威力：{card.power} | 条件：{card.cond_text}</small>
+        <div class='{card_class}' style='border-color: {border_color};'>
+            <b style='color: {title_color};'>{card.name}</b><br>
+            <small style='color: #CCCCCC;'>威力：{card.power} | 条件：{card.cond_text}</small>
         </div>
         """, unsafe_allow_html=True)
         
+        # --- 4. 発動ボタンと実際の処理 ---
         if is_my_turn and is_ready:
             if st.button("発動", key=f"atk_{card.name}_{idx}_{data['turn_count']}"):
-                # 決定音を再生
-                play_se(SE_URL)
+                play_se(SE_URL) # 効果音
                 
-                # 更新データの作成
                 upd = {
                     "turn": f"P{opp_id}", 
                     "turn_count": data["turn_count"] + 1
@@ -326,19 +332,18 @@ for idx, card in enumerate(pool):
                 else:
                     upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
                 
-                # 消費処理：固有か手札かで分ける
-                if "固有" in card.name:
+                # 消費処理
+                if is_innate:
                     upd[f"{me}_used_innate"] = my_used_innate + [card.name]
                 else:
-                    # 手札からこのカードを1枚だけ削除
                     new_hand = list(my_hand_from_db)
                     if card.name in new_hand:
                         new_hand.remove(card.name)
                     upd[f"{me}_hand"] = new_hand
                 
+                st.session_state.rolls = 2 # 振った回数リセット
                 update_db(upd)
                 st.rerun()
-
 # 3. 終了処理とドロー
 if is_my_turn:
     if st.button("ターンを終了してドロー", key=f"end_{data['turn_count']}"):
@@ -381,6 +386,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
