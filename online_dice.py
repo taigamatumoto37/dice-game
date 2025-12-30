@@ -414,6 +414,36 @@ if st.sidebar.button("🚨 全リセット"):
     st.session_state.hand = []
     st.rerun()
 
+if st.button("ゲームをリセットして開始"):
+    # 1. 全カードを定義したリストから新しい山札を作成してシャッフル
+    import random
+    all_card_names = [name for name, card in CARD_DB.items()]
+    new_deck = all_card_names.copy()
+    random.shuffle(new_deck)
+    
+    # 2. 初期データを作成
+    initial_data = {
+        "hp1": 100,
+        "hp2": 100,
+        "p1_hand": [],           # P1の手札を空に
+        "p2_hand": [],           # P2の手札を空に
+        "p1_used_innate": [],    # P1の使用済み固有スキルをリセット
+        "p2_used_innate": [],    # P2の使用済み固有スキルをリセット
+        "deck": new_deck,        # 新しい山札をセット
+        "turn": "P1",            # P1から開始
+        "turn_count": 1
+    }
+    
+    # 3. DBを完全に上書き
+    update_db(initial_data)
+    
+    # 4. ローカルの状態もリセット
+    st.session_state.dice = [0] * 5
+    st.session_state.rolls = 2
+    st.session_state.is_discard_mode = False
+    
+    st.success("ゲームを初期化しました！")
+    st.rerun()
 
 
 
