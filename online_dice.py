@@ -3,7 +3,33 @@ from supabase import create_client
 import time
 import random
 import streamlit.components.v1 as components
+import streamlit as st
+import streamlit.components.v1 as components
 
+# GitHubのRaw URL (あなたがアップロードしたファイル)
+bgm_url = "https://github.com/taigamatumoto37/dice-game/raw/main/001_%E3%80%90%E7%9D%A1%E7%9C%A030%E5%88%86%E5%89%8D%E7%94%A8%E3%80%91%E7%86%9F%E7%9D%A1%E3%81%A7%E3%81%8D%E3%82%8B%E7%9D%A1%E7%9C%A0%E7%94%A8BGM%20Smooth%20Jazz%E3%80%90%E5%BA%83%E5%91%8A%E3%81%AA%E3%81%97%E3%80%91Deep%20Sleep%2C%20Relaxing%2C%20Healing%2C%20Sleep%20Music%2C%2030%20miniutes.mp3"
+
+# BGM再生用のHTML/JavaScript
+components.html(
+    f"""
+    <audio id="bgm" src="{bgm_url}" loop></audio>
+    <script>
+        // ブラウザの自動再生制限を回避するため、画面のどこかをクリックした瞬間に再生を開始する
+        window.parent.document.body.addEventListener('click', function() {{
+            var audio = document.getElementById('bgm');
+            if (audio.paused) {{
+                audio.play().catch(e => console.log("BGM Playback failed:", e));
+            }}
+        }}, {{ once: true }});
+    </script>
+    """,
+    height=0,
+)
+
+# サイドバーに音量調節などの案内を表示
+st.sidebar.markdown("---")
+st.sidebar.markdown("🎵 **BGM: Smooth Jazz**")
+st.sidebar.caption("※画面のどこかをクリックすると再生が始まります")
 # BGMの設定（YouTubeなどの直リンクや、GitHubに上げたMP3のURLなどを指定）
 # ※ここでは著作権フリーのサンプル音源を入れています
 bgm_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
@@ -266,6 +292,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
