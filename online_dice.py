@@ -194,7 +194,7 @@ for p_num in [1, 2]:
     with (c1 if p_num == 1 else c2):
         hp = data[f"hp{p_num}"]
         st.write(f"PLAYER {p_num} {'🔥' if data['turn'] == f'P{p_num}' else ''}")
-        st.write(f"HP {hp} / {MAX_HP}") # ここを MAX_HP に
+        st.write(f"HP / 100") # ここを MAX_HP に
         
         # 割合計算：(現在のHP / MAX_HP) * 100
         hp_percent = max(0, min(100, (hp / MAX_HP) * 100)) 
@@ -447,5 +447,6 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
