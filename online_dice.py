@@ -256,19 +256,20 @@ else:
     # 相手のターン時は現在のダイスを表示のみ（または0に）
     st.info("相手のターンです。作戦を練りましょう...")
     st.session_state.dice = [0,0,0,0,0]
-# 2. 自分のカード一覧（相手のターンでも表示）
-st.write("### ⚔️ あなたのスキル")
-used = data.get(f"{me}_used_innate", [])
-hand = st.session_state.get("hand", [])
-pool = [c for c in INNATE_DECK if c.name not in used]
-for h in hand:
-    if h in CARD_DB: pool.append(CARD_DB[h])
+# --- 2. 自分のカード一覧（DBから自分専用の手札を取得） ---
+st.write(f"### ⚔️ PLAYER {my_id} のスキル")
+
+# DBから最新の自分専用データを取得
+my_hand_from_db = list(data.get(f"{me}_hand", []))
+my_used_innate = list(data.get(f"{me}_used_innate", []))
+
+# 表示用リスト（pool）の作成：固有スキル - 使用済み ＋ 手札
+pool = [c for c in INNATE_DECK if c.name not in my_used_innate]
+for h_name in my_hand_from_db:
+    if h_name in CARD_DB:
+        pool.append(CARD_DB[h_name])
 
 sc = st.columns(3)
-# data[f"{me}_hand"] から現在の手札リストを取得しておく
-current_hand = list(data.get(f"{me}_hand", [])) 
-# data[f"{me}_used_innate"] から使用済み固有スキルを取得しておく
-current_used_innate = list(data.get(f"{me}_used_innate", []))
 
 for idx, card in enumerate(pool):
     # 自分のターンかつダイスがある時だけ役判定
@@ -283,31 +284,32 @@ for idx, card in enumerate(pool):
         """, unsafe_allow_html=True)
         
         if is_my_turn and is_ready:
-            if st.button("発動", key=f"atk_{idx}_{data['turn_count']}"):
-                # --- 1. 基本の更新データ（ターン交代） ---
+            if st.button("発動", key=f"atk_{card.name}_{idx}_{data['turn_count']}"):
+                # 決定音を再生
+                play_se(SE_URL)
+                
+                # 更新データの作成
                 upd = {
                     "turn": f"P{opp_id}", 
                     "turn_count": data["turn_count"] + 1
                 }
                 
-                # --- 2. ダメージ・回復計算 ---
+                # ダメージ・回復計算
                 if card.type == "attack":
                     upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - card.power
                 else:
                     upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
                 
-                # --- 3. 消費処理 ---
+                # 消費処理：固有か手札かで分ける
                 if "固有" in card.name:
-                    # 固有スキルの場合：使用済みリストに追加
-                    new_used = current_used_innate + [card.name]
-                    upd[f"{me}_used_innate"] = new_used
+                    upd[f"{me}_used_innate"] = my_used_innate + [card.name]
                 else:
-                    # ドローしたカードの場合：手札リストからそのカードを削除
-                    if card.name in current_hand:
-                        current_hand.remove(card.name)
-                    upd[f"{me}_hand"] = current_hand
+                    # 手札からこのカードを1枚だけ削除
+                    new_hand = list(my_hand_from_db)
+                    if card.name in new_hand:
+                        new_hand.remove(card.name)
+                    upd[f"{me}_hand"] = new_hand
                 
-                # --- 4. DB更新と画面更新 ---
                 update_db(upd)
                 st.rerun()
 
@@ -350,6 +352,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
