@@ -213,60 +213,49 @@ def play_se(url):
         height=0,
     )
 
-# --- ダイスを振る処理 ---
+
 if is_my_turn:
-    if st.button("🎲 ダイスを振る", use_container_width=True):
-        # 1. 振り始めの音を鳴らす
-        play_se(DICE_ROLL_SE)
-        
-        # 2. アニメーション演出
-        dice_placeholders = [st.empty() for _ in range(5)]
-        for _ in range(12):  # シャッフル回数
-            temp_dice = [random.randint(1, 6) for _ in range(5)]
-            cols = st.columns(5)
-            for i, val in enumerate(temp_dice):
-                dice_placeholders[i].markdown(
-                    f"<div style='font-size:40px; text-align:center; color:#555;'>{val}</div>", 
-                    unsafe_allow_html=True
-                )
-            time.sleep(0.06)
-        
-        # 3. 出目を確定させる
-        new_dice = [random.randint(1, 6) for _ in range(5)]
-        st.session_state.dice = new_dice
-        
-        # 4. ★ここで「決定ボタンを押す8.mp3」を鳴らす！★
-        play_se(DICE_FIX_SE)
-        
-        # 5. DBに保存して更新
-        update_db({f"{me}_dice": new_dice})
-        
-        # 確定した出目を大きく表示
-        cols = st.columns(5)
-        for i, v in enumerate(new_dice):
-            dice_placeholders[i].markdown(
-                f"<div style='font-size:45px; text-align:center; font-weight:bold; color:#00FFAA; border:2px solid #00FFAA; border-radius:10px;'>{v}</div>", 
-                unsafe_allow_html=True
-            )
-        
-        # 画面をリロードして反映
-        time.sleep(0.5)
-        ##st.rerun()
-    
-    if st.session_state.rolls > 0:
-        if st.button(f"もう一度振る (残り{st.session_state.rolls}回)", key=f"reroll_{data['turn_count']}"):
+    # 現在の残り振れる回数を表示
+    remaining_rolls = st.session_state.get("rolls", 0)
+    st.write(f"### 🎲 あなたの刻印 (残りリロール回数: {remaining_rolls})")
+    cols = st.columns(5)
+    for i in range(5):
+        # キープ（ホールド）機能のチェックボックス
+        is_keep = st.checkbox(f"Keep", key=f"keep_{i}_{data['turn_count']}", value=st.session_state.get("keep", [False]*5)[i])
+        st.session_state.keep[i] = is_keep
+        cols[i].markdown(f"<div class='dice-slot'>{'?' if not any(st.session_state.dice) else st.session_state.dice[i]}</div>", unsafe_allow_html=True)
+
+    # 振り直しボタン（回数制限あり）
+    if remaining_rolls > 0:
+        if st.button(f"🎲 ダイスを振る (残り{remaining_rolls}回)", use_container_width=True):
+            # 1. 決定音を鳴らす（あなたのGitHub音源）
+            play_se(DICE_FIX_SE)
+            
+            # 2. アニメーション演出
+            dice_placeholders = [st.empty() for _ in range(5)]
+            for _ in range(10):
+                temp_vals = [random.randint(1, 6) for _ in range(5)]
+                for i in range(5):
+                    if not st.session_state.keep[i]:
+                        dice_placeholders[i].markdown(f"<div class='dice-slot' style='color:#555;'>{temp_vals[i]}</div>", unsafe_allow_html=True)
+                time.sleep(0.05)
+            
+            # 3. 出目確定（キープされていないものだけ更新）
             for i in range(5):
-                if not st.session_state.keep[i]: st.session_state.dice[i] = random.randint(1, 6)
+                if not st.session_state.keep[i]:
+                    st.session_state.dice[i] = random.randint(1, 6)
+            
+            # 4. 状態更新
             st.session_state.rolls -= 1
             update_db({f"{me}_dice": st.session_state.dice})
             st.rerun()
+    else:
+        st.warning("⚠️ これ以上ダイスは振れません。スキルを発動するか、ターンを終了してください。")
+
 else:
-    # 相手のターン時は現在のダイスをクリア
-    st.session_state.dice = [0,0,0,0,0] 
+    # 相手のターン時は現在のダイスを表示のみ（または0に）
     st.info("相手のターンです。作戦を練りましょう...")
-
-st.divider()
-
+    st.session_state.dice = [0,0,0,0,0]
 # 2. 自分のカード一覧（相手のターンでも表示）
 st.write("### ⚔️ あなたのスキル")
 used = data.get(f"{me}_used_innate", [])
@@ -361,6 +350,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
