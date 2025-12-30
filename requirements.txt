@@ -1,2 +1,2 @@
 streamlit
-st-key-value-store
+st-gsheets-connection
