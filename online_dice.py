@@ -128,6 +128,11 @@ def update_db(u):
 # --- 3. CSS (写真のUI再現) ---
 st.markdown("""
 <style>
+.status-poison {
+    background-color: rgba(138, 43, 226, 0.4) !important; /* 紫色の背景 */
+    box-shadow: 0 0 15px #8A2BE2 !important; /* 紫の光 */
+    border: 2px solid #8A2BE2 !important;
+}
 .innate-card {
         border: 2px solid #FFD700 !important;
         background: linear-gradient(145deg, #1A1C23, #2A2D35) !important;
@@ -343,29 +348,30 @@ for idx, card in enumerate(pool):
                     st.session_state.is_discard_mode = False
                     st.session_state.rolls = 2
                     st.rerun()
-        else:
+      else:
             # 【通常モード】発動ボタンを表示
             if is_my_turn and is_ready:
                 if st.button("発動", key=f"atk_{card.name}_{idx}_{data['turn_count']}"):
                     play_se(SE_URL) # 効果音
                     
+                    # 1. まず更新用のデータ（upd）の基本形を作る
                     upd = {
-                        "turn": f"P{opp_id}", 
-                        "turn_count": data["turn_count"] + 1
+                        "turn": f"P{opp_id}",             # 相手のターンに交代
+                        "turn_count": data["turn_count"] + 1 # ターン数を進める
                     }
                     
-                    # ダメージ・回復計算
+                    # 2. ダメージ・回復計算
                     if card.type == "attack":
                         upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - card.power
                     else:
                         upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
                     
-                    # 【追加】毒の付与ロジック (インデント修正済み)
+                    # 3. 【重要】毒の判定を update_db の「前」に行う
                     if card.name == "固有:毒蛇の咆哮":
                         upd[f"status{opp_id}"] = "poison"
                         st.toast("☣️ 相手を毒状態にした！")
 
-                    # 消費処理
+                    # 4. 消費処理（固有スキルか通常手札か）
                     if is_innate:
                         upd[f"{me}_used_innate"] = my_used_innate + [card.name]
                     else:
@@ -374,8 +380,9 @@ for idx, card in enumerate(pool):
                             new_hand.remove(card.name)
                         upd[f"{me}_hand"] = new_hand
                     
-                    st.session_state.rolls = 2 # 振った回数リセット
-                    update_db(upd) # すべての更新（毒含む）を一度に反映
+                    # 5. 最後にまとめて一度だけDBを更新（これでターンも毒も反映される）
+                    st.session_state.rolls = 2 
+                    update_db(upd)
                     st.rerun()
 # --- 3. 終了処理とドロー (修正版) ---
 if is_my_turn:
@@ -453,6 +460,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
