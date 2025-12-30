@@ -8,7 +8,7 @@ url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
-# --- 2. カード定義 & 判定ロジック ---
+# --- 2. 判定ロジック & カード定義 ---
 class Card:
     def __init__(self, name, ctype, power, condition_func, cond_text, desc, effect_type=None, duration=0):
         self.name, self.type, self.power, self.condition_func, self.cond_text = name, ctype, power, condition_func, cond_text
@@ -24,19 +24,15 @@ def check_full_house(d):
     return 3 in counts and 2 in counts
 def check_yahtzee(d): return len(set(d)) == 1
 
-# 通常カード
 CARD_DB = {
-    "ジェミニ・ダガー": Card("ジェミニ・ダガー", "attack", 15, check_pair, "ペア", "双子の短剣による素早い二連撃。"),
-    "トライ・ブラスト": Card("トライ・ブラスト", "attack", 25, check_three, "スリーカード", "三位一体の魔力による爆発。"),
-    "慈悲の祝福": Card("慈悲の祝福", "heal", 35, check_pair, "ペア", "聖なる光が負傷を癒やす。"),
-    "崩壊の紫煙": Card("崩壊の紫煙", "status", 5, check_three, "スリーカード", "毒で毎ターン5ダメージ。", "poison", 3)
+    "ジェミニ・ダガー": Card("ジェミニ・ダガー", "attack", 15, check_pair, "ペア", "双子の短剣による二連撃。"),
+    "トライ・ブラスト": Card("トライ・ブラスト", "attack", 25, check_three, "スリーカード", "三位一体の爆発。"),
+    "慈悲 of 祝福": Card("慈悲 of 祝福", "heal", 35, check_pair, "ペア", "HP上限を超えて回復可能。"),
 }
-
-# 固有カードの定義 (全プレイヤー共通のマスターリスト)
 INNATE_DECK = [
-    Card("固有:トリニティ", "attack", 20, check_three, "スリーカード", "固有の魔力による三連撃。"),
-    Card("固有:五連光破斬", "attack", 30, check_straight, "ストレート", "五行の力を乗せた一撃。"),
-    Card("固有:神罰の五連星", "attack", 50, check_yahtzee, "ヤッツィー", "神の裁きを下す究極の技。")
+    Card("固有:トリニティ", "attack", 20, check_three, "スリーカード", "固有の三連撃。"),
+    Card("固有:五連光破斬", "attack", 30, check_straight, "ストレート", "五行の力。"),
+    Card("固有:神罰の五連星", "attack", 50, check_yahtzee, "ヤッツィー", "究極の五連星。")
 ]
 
 def get_data(): return supabase.table("game_state").select("*").eq("id", 1).execute().data[0]
@@ -46,145 +42,111 @@ def update_db(u): supabase.table("game_state").update(u).eq("id", 1).execute()
 st.markdown("""
 <style>
     .stApp { background-color: #0E1117; color: white; }
-    div.stButton > button { background-color: #FF4B4B !important; color: white !important; font-weight: bold !important; border-radius: 10px !important; }
+    .dice-container { display: flex; justify-content: space-around; margin-bottom: 20px; }
+    .dice-box { background: #1A1C23; padding: 15px; text-align: center; font-size: 30px; border-radius: 10px; border: 2px solid #444; color: #00FFFF; width: 60px; height: 60px; line-height: 30px; }
+    .opp-dice-box { border-color: #FF4B4B; color: #FF4B4B; opacity: 0.8; }
     .hp-text { font-size: 38px; font-weight: bold; color: #00FFAA; }
-    .card-panel { background: #1E1E26; padding: 15px; border-radius: 12px; border-left: 5px solid #FF4B4B; margin-bottom: 10px; }
-    .innate-panel { border-left: 5px solid #FFD700; background: #262214; border-right: 1px solid #FFD700; }
-    .bonus-msg { color: #FFD700; font-weight: bold; border: 1px solid #FFD700; padding: 5px; border-radius: 5px; text-align: center; margin-top:5px;}
 </style>
 """, unsafe_allow_html=True)
 
 # --- 4. メインロジック ---
 data = get_data()
 
-# サイドバー：リセット
-if st.sidebar.button("🚨 全リセット"):
-    update_db({
-        "hp1": 100, "hp2": 100, 
-        "turn": "P1", "turn_count": 0, 
-        "p1_status": None, "p2_status": None, 
-        "p1_used_innate": [], "p2_used_innate": [], 
-        "p1_bonus": 0, "p2_bonus": 0
-    })
-    st.session_state.hand = []
-    st.rerun()
-
+# 役割設定
 role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"])
 me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p1", 2, 1)
 
-st.title("⚔️ YAHTZEE TACTICS")
+# 全リセット
+if st.sidebar.button("🚨 全リセット"):
+    update_db({"hp1": 100, "hp2": 100, "turn": "P1", "turn_count": 0, "p1_status": None, "p2_status": None, "p1_used_innate": [], "p2_used_innate": [], "p1_bonus": 0, "p2_bonus": 0, "p1_dice": [1,1,1,1,1], "p2_dice": [1,1,1,1,1]})
+    st.rerun()
 
-# HP & 状態表示
+st.title("⚔️ YAHTZEE TACTICS - LIVE")
+
+# --- HP & 相手のダイス表示 ---
 c1, c2 = st.columns(2)
-for i, p_pre in enumerate(["p1", "p2"]):
-    with (c1 if i == 0 else c2):
-        st.write(f"**PLAYER {i+1}**")
-        hp = data[f"hp{i+1}"]
-        st.markdown(f"<p class='hp-text'>{hp}</p>", unsafe_allow_html=True)
-        bonus = data.get(f"{p_pre}_bonus", 0)
-        if bonus > 0: st.markdown(f"<div class='bonus-msg'>ATK BONUS +{bonus}</div>", unsafe_allow_html=True)
-        st.progress(min(1.0, max(0, hp) / 100))
+with c1:
+    st.write(f"**YOU (P{my_id})**")
+    st.markdown(f"<p class='hp-text'>{data[f'hp{my_id}']}</p>", unsafe_allow_html=True)
+    st.progress(min(1.0, max(0, data[f'hp{my_id}']) / 100))
+
+with c2:
+    st.write(f"**ENEMY (P{opp_id})**")
+    st.markdown(f"<p class='hp-text'>{data[f'hp{opp_id}']}</p>", unsafe_allow_html=True)
+    st.progress(min(1.0, max(0, data[f'hp{opp_id}']) / 100))
+    # 相手のダイスをリアルタイム表示
+    opp_dice = data.get(f"{opp}_dice", [1,1,1,1,1])
+    cols = st.columns(5)
+    for i in range(5):
+        cols[i].markdown(f"<div class='dice-box opp-dice-box'>{opp_dice[i]}</div>", unsafe_allow_html=True)
 
 st.divider()
 
+# --- 自分のターン処理 ---
 if data["turn"] == (f"P{my_id}"):
-    # ターン開始
+    # ターン開始初期化
     if st.session_state.get("last_t_count") != data["turn_count"]:
-        updates = {"turn_count": data["turn_count"]}
-        # 持続ダメージ処理
-        s = data.get(f"{me}_status")
-        if s and s['dur'] > 0:
-            updates[f"hp{my_id}"] = data[f"hp{my_id}"] - s['pow']
-            updates[f"{me}_status"] = {"type": s['type'], "pow": s['pow'], "dur": s['dur']-1} if s['dur']-1 > 0 else None
-            update_db(updates); st.rerun()
-
-        st.session_state.dice = [random.randint(1, 6) for _ in range(5)]
+        new_dice = [random.randint(1, 6) for _ in range(5)]
+        st.session_state.dice = new_dice
         st.session_state.rolls_left = 2
         st.session_state.keep = [False] * 5
         st.session_state["last_t_count"] = data["turn_count"]
+        # 初期ダイスをDBへ
+        update_db({f"{me}_dice": new_dice})
         st.rerun()
 
-    # ダイスエリア
-    st.write(f"🎲 残り振り直し: {st.session_state.rolls_left}回")
+    st.write(f"🎲 あなたのダイス (残り振り直し: {st.session_state.rolls_left}回)")
     d_cols = st.columns(5)
     for i in range(5):
         with d_cols[i]:
-            st.markdown(f"<div style='background:#1A1C23; padding:15px; text-align:center; font-size:30px; border-radius:10px; border:1px solid #444; color:#00FFFF;'>{st.session_state.dice[i]}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='dice-box'>{st.session_state.dice[i]}</div>", unsafe_allow_html=True)
             st.session_state.keep[i] = st.checkbox("Keep", key=f"k{i}")
 
-    # --- 技の構築ロジック (ここを修正) ---
-    used_innate = data.get(f"{me}_used_innate")
-    if used_innate is None: used_innate = [] # None対策
-    
-    # 固有カードを表示用リストに追加（使用済みでないもの）
-    pool = []
-    for c in INNATE_DECK:
-        if c.name not in used_innate:
-            pool.append(c)
-
-    # 手札カードを追加
+    # --- アクションエリア ---
+    used_innate = data.get(f"{me}_used_innate", [])
+    pool = [c for c in INNATE_DECK if c.name not in used_innate]
     if "hand" not in st.session_state: st.session_state.hand = []
     for h in st.session_state.hand:
         if h in CARD_DB: pool.append(CARD_DB[h])
     
     available = [c for c in pool if c.condition_func(st.session_state.dice)]
 
-    st.write("### ⚔️ アクションを選択")
     if available:
         for idx, card in enumerate(available):
-            is_innate = "固有" in card.name
-            bonus_dmg = data.get(f"{me}_bonus", 0) if card.type == "attack" else 0
-            
-            st.markdown(f"""
-                <div class='card-panel {"innate-panel" if is_innate else ""}'>
-                    <strong>{card.name}</strong> | {'威力:' + str(card.power + bonus_dmg) if card.type=='attack' else '回復'} <br>
-                    <small>{card.desc}</small>
-                </div>
-            """, unsafe_allow_html=True)
-            
             if st.button(f"発動：{card.name}", key=f"btn_{idx}"):
                 latest = get_data()
+                bonus = latest.get(f"{me}_bonus", 0)
                 updates = {"turn": f"P{opp_id}", "turn_count": latest["turn_count"]+1}
-                
-                # 効果
-                if card.type == "attack": updates[f"hp{opp_id}"] = latest[f"hp{opp_id}"] - (card.power + bonus_dmg)
+                if card.type == "attack": updates[f"hp{opp_id}"] = latest[f"hp{opp_id}"] - (card.power + bonus)
                 elif card.type == "heal": updates[f"hp{my_id}"] = latest[f"hp{my_id}"] + card.power
-                elif card.type == "status": updates[f"{opp}_status"] = {"type": card.effect_type, "pow": card.power, "dur": card.duration}
-
-                # 固有カードの処理
-                if is_innate:
-                    new_used = used_innate + [card.name]
-                    if len(new_used) >= len(INNATE_DECK): # 全て使い切った
-                        st.balloons()
-                        updates[f"{me}_used_innate"] = [] # 復活
-                        updates[f"{me}_bonus"] = latest.get(f"{me}_bonus", 0) + 10 # 覚醒
-                    else:
-                        updates[f"{me}_used_innate"] = new_used
-                else:
-                    st.session_state.hand.remove(card.name)
                 
+                if "固有" in card.name:
+                    new_used = used_innate + [card.name]
+                    if len(new_used) >= 3:
+                        updates[f"{me}_used_innate"] = []
+                        updates[f"{me}_bonus"] = bonus + 10
+                    else: updates[f"{me}_used_innate"] = new_used
+                else: st.session_state.hand.remove(card.name)
                 update_db(updates); st.rerun()
-    else:
-        st.info("条件を満たす技がありません。")
 
-    # アクション
-    st.divider()
-    cx, cy = st.columns(2)
-    with cx:
+    # ダイス操作
+    col_x, col_y = st.columns(2)
+    with col_x:
         if st.session_state.rolls_left > 0 and st.button("🎲 振り直す"):
             for i in range(5):
                 if not st.session_state.keep[i]: st.session_state.dice[i] = random.randint(1, 6)
-            st.session_state.rolls_left -= 1; st.rerun()
-    with cy:
-        if len(st.session_state.hand) < 5 and st.button("🎴 交代してドロー"):
+            st.session_state.rolls_left -= 1
+            update_db({f"{me}_dice": st.session_state.dice}) # DB同期
+            st.rerun()
+    with col_y:
+        if len(st.session_state.hand) < 5 and st.button("🎴 ドロー交代"):
             deck = data["deck"]
             if deck:
                 st.session_state.hand.append(deck.pop())
                 update_db({"deck": deck, "turn": f"P{opp_id}", "turn_count": data["turn_count"]+1})
                 st.rerun()
-else:
-    st.info("相手が思考中です...")
-    time.sleep(3); st.rerun()
 
-st.sidebar.write("### 現在の手札")
-for h in st.session_state.get("hand", []): st.sidebar.caption(h)
+else:
+    st.info("相手のターンを待機中...")
+    time.sleep(2)
+    st.rerun()
