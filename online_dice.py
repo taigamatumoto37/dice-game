@@ -8,27 +8,28 @@ url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
-# --- 2. カード定義 (tttt.pyの移植) ---
-def check_pair(d): return any(d.count(x) >= 2 for x in set(d))
-def check_three(d): return any(d.count(x) >= 3 for x in set(d))
-def check_straight(d): 
-    s = sorted(list(set(d)))
-    return any(s[i:i+5] == list(range(s[i], s[i]+5)) for i in range(len(s)-4))
-def check_full_house(d): 
-    counts = [d.count(x) for x in set(d)]
-    return 3 in counts and 2 in counts
-def check_yahtzee(d): return len(set(d)) == 1
-
-# カードマスタ（名前: [タイプ, 威力, 役名, 状態異常, レア度]）
-CARD_MASTER = {
-    "ジェミニ・ダガー": ["attack", 15, "pair", None, "弱"],
-    "トライ・ブラスト": ["attack", 25, "three", None, "中"],
-    "崩壊の紫煙(毒)": ["status", 0, "three", ("poison", 3), "中"],
-    "天階の連撃": ["attack", 40, "straight", None, "強"],
-    "慈悲の祝福": ["heal", 30, "pair", None, "レア"],
-    "終焉の聖家": ["attack", 60, "full_house", None, "レア"],
-    "固有:神罰の五連星": ["attack", 50, "yahtzee", None, "固有"]
-}
+# --- 2. 状態異常処理ロジック ---
+def apply_status_effects(current_hp, status_dict):
+    """状態異常ダメージを計算し、残りターンを減らす"""
+    new_hp = current_hp
+    new_status = {}
+    logs = []
+    
+    for effect, turns in status_dict.items():
+        if turns > 0:
+            if effect == "poison":
+                dmg = 10
+                new_hp -= dmg
+                logs.append(f"🧪 毒ダメージ: {dmg}!")
+            elif effect == "burn":
+                dmg = 15
+                new_hp -= dmg
+                logs.append(f"🔥 燃焼ダメージ: {dmg}!")
+            
+            if turns - 1 > 0:
+                new_status[effect] = turns - 1
+    
+    return max(0, new_hp), new_status, logs
 
 # --- 3. 同期関数 ---
 def get_data():
@@ -38,85 +39,71 @@ def get_data():
 def update_game(update_dict):
     supabase.table("game_state").update(update_dict).eq("id", 1).execute()
 
-# 山札の作成
-def create_new_deck():
-    d = []
-    for name in CARD_MASTER:
-        if "固有" not in name:
-            d.extend([name] * 5) # 各5枚ずつ
-    random.shuffle(d)
-    return d
-
-# --- 4. メインUI ---
+# --- 4. メメインUI ---
 st.set_page_config(page_title="Yahtzee Tactics Online", layout="wide")
 data = get_data()
 
-# プレイヤー設定
 role = st.sidebar.radio("役割", ["Player 1", "Player 2"])
 my_id = "P1" if role == "Player 1" else "P2"
 enemy_id = "P2" if role == "Player 1" else "P1"
 my_hp_key = "hp1" if role == "Player 1" else "hp2"
 enemy_hp_key = "hp2" if role == "Player 1" else "hp1"
+my_status_key = "p1_status" if role == "Player 1" else "p2_status"
+enemy_status_key = "p2_status" if role == "Player 1" else "p1_status"
 
-st.title("⚔️ Yahtzee Online: Deck Sync")
+st.title("⚔️ Yahtzee Online: Status Effects")
 
 # ステータス表示
 c1, c2 = st.columns(2)
-c1.metric("P1 HP", data["hp1"])
-c2.metric("P2 HP", data["hp2"])
-st.write(f"🎴 山札残り: {len(data['deck'] if data['deck'] else [])} 枚")
+with c1:
+    st.metric("P1 HP", data["hp1"])
+    st.write(f"状態: {data['p1_status']}")
+with c2:
+    st.metric("P2 HP", data["hp2"])
+    st.write(f"状態: {data['p2_status']}")
 
-# 自分のターン
+# --- 5. ターン開始時の状態異常チェック ---
+# 自分のターンになった瞬間、一度だけダメージ処理を行うための判定
 if data["turn"] == my_id:
+    # 前回のダメージ処理が済んでいないかチェック（Session Stateを利用）
+    if st.session_state.get("last_processed_turn") != data.get("turn_count", 0):
+        new_hp, new_status, logs = apply_status_effects(data[my_hp_key], data[my_status_key])
+        if logs:
+            for log in logs: st.toast(log)
+            # データベースを更新（ダメージとターン減少）
+            update_game({my_hp_key: new_hp, my_status_key: new_status})
+            st.rerun()
+        st.session_state["last_processed_turn"] = data.get("turn_count", 0)
+
     st.success("あなたの番です！")
     
-    # 手札の管理 (Session State)
-    if "my_hand" not in st.session_state: st.session_state.my_hand = []
-    if "dice" not in st.session_state: st.session_state.dice = [random.randint(1,6) for _ in range(5)]
-
-    st.write(f"### 🎲 ダイス: {st.session_state.dice}")
-    
-    col_a, col_b, col_c = st.columns(3)
-    
-    # 1. 振り直し
-    if col_a.button("振り直す"):
-        st.session_state.dice = [random.randint(1,6) for _ in range(5)]
+    # 攻撃デモ用ボタン（本来はダイス判定後に実行）
+    if st.button("相手を「毒(3T)」にする攻撃！"):
+        update_game({
+            enemy_status_key: {"poison": 3},
+            "turn": enemy_id,
+            "turn_count": data.get("turn_count", 0) + 1
+        })
         st.rerun()
 
-    # 2. ドロー（共通の山札から引く）
-    if col_b.button("カードを1枚引く"):
-        deck = data["deck"]
-        if deck:
-            new_card = deck.pop()
-            st.session_state.my_hand.append(new_card)
-            update_game({"deck": deck, "turn": enemy_id})
-            st.rerun()
-        else:
-            st.error("山札がありません！")
-
-    # 3. 攻撃（手札から選ぶ）
-    if st.session_state.my_hand:
-        selected = st.selectbox("手札から技を使う:", st.session_state.my_hand)
-        if st.button("発動！"):
-            m = CARD_MASTER[selected]
-            # 役判定
-            cond_func = {"pair": check_pair, "three": check_three, "straight": check_straight, "full_house": check_full_house, "yahtzee": check_yahtzee}[m[2]]
-            
-            if cond_func(st.session_state.dice):
-                dmg = m[1]
-                new_enemy_hp = data[enemy_hp_key] - dmg
-                st.session_state.my_hand.remove(selected)
-                update_game({enemy_hp_key: max(0, new_enemy_hp), "turn": enemy_id})
-                st.rerun()
-            else:
-                st.error("役が足りません！")
+    if st.button("何もしないで交代"):
+        update_game({
+            "turn": enemy_id,
+            "turn_count": data.get("turn_count", 0) + 1
+        })
+        st.rerun()
 
 else:
-    st.info("相手がドローまたは攻撃を考えています...")
+    st.info("相手の行動を待っています...")
     time.sleep(3)
     st.rerun()
 
 # リセット
-if st.sidebar.button("♻️ ゲームリセット"):
-    update_game({"hp1": 100, "hp2": 100, "turn": "P1", "deck": create_new_deck()})
+if st.sidebar.button("♻️ フルリセット"):
+    update_game({
+        "hp1": 100, "hp2": 100, 
+        "turn": "P1", "turn_count": 0,
+        "p1_status": {}, "p2_status": {},
+        "deck": [] # 前回の山札初期化関数をここに呼ぶ
+    })
     st.rerun()
