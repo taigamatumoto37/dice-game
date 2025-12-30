@@ -132,33 +132,45 @@ for p_num in [1, 2]:
         hp_percent = max(0, (hp / 100) * 100)
         st.markdown(f"<div class='hp-bar-container'><div class='hp-bar-fill' style='width:{min(100, hp_percent)}%'></div></div>", unsafe_allow_html=True)
 
-# --- 勝敗判定（HP表示のすぐ下、メイン処理の中） ---
+# --- 勝敗判定エリア ---
 p1_hp = data["hp1"]
 p2_hp = data["hp2"]
 
 if p1_hp <= 0 or p2_hp <= 0:
-    # 両方0以下の場合は引き分けか、ダメージを受けた側が負け
     winner = "Player 2" if p1_hp <= 0 else "Player 1"
     
+    # 反射勝利フラグがあるかチェック
+    is_counter = st.session_state.get("counter_finish", False)
+    
+    bg_color = "rgba(255, 215, 0, 0.3)" if is_counter else "rgba(255, 0, 0, 0.2)"
+    border_color = "#FFD700" if is_counter else "#FF0000"
+    main_text = "FULL COUNTER WIN!" if is_counter else "GAME OVER"
+    text_color = "#FFD700" if is_counter else "#FF0000"
+
     st.markdown(f"""
-        <div style="text-align: center; padding: 50px; background-color: rgba(255,0,0,0.2); border-radius: 20px; border: 5px solid #FF0000; margin: 20px 0;">
-            <h1 style="color: #FF0000; font-size: 80px; margin-bottom: 0;">GAME OVER</h1>
+        <div style="text-align: center; padding: 50px; background-color: {bg_color}; 
+                    border-radius: 20px; border: 8px double {border_color}; margin: 20px 0;
+                    box-shadow: 0 0 20px {border_color}; animation: pulse 2s infinite;">
+            <h1 style="color: {text_color}; font-size: 80px; margin-bottom: 10px; text-shadow: 2px 2px 10px black;">{main_text}</h1>
             <h2 style="color: white; font-size: 40px;">🏆 Winner: {winner}</h2>
+            <p style="color: #EEE;">{'相手の力を利用して勝利を掴み取った！' if is_counter else '激闘の末、勝者が決定した！'}</p>
         </div>
+        <style>
+            @keyframes pulse {{
+                0% {{ transform: scale(1); opacity: 1; }}
+                50% {{ transform: scale(1.02); opacity: 0.8; }}
+                100% {{ transform: scale(1); opacity: 1; }}
+            }}
+        </style>
     """, unsafe_allow_html=True)
     
     if st.button("🔄 もう一度遊ぶ (リセット)"):
+        # フラグもリセット
+        st.session_state.counter_finish = False
         cards = list(CARD_DB.keys()); d = cards * 2; random.shuffle(d)
-        update_db({
-            "hp1": 100, "hp2": 100, 
-            "p1_hand":[], "p2_hand":[], 
-            "p1_used_innate":[], "p2_used_innate":[], 
-            "turn":"P1", "turn_count":0, 
-            "pending_damage":0, "phase":"ATK", 
-            "deck": d
-        })
+        update_db({"hp1": 100, "hp2": 100, "p1_hand":[], "p2_hand":[], "p1_used_innate":[], "p2_used_innate":[], "turn":"P1", "turn_count":0, "pending_damage":0, "phase":"ATK", "deck": d})
         st.rerun()
-    st.stop() # ここで止めることで、下のダイスロールなどは表示されなくなります
+    st.stop()
 # --- 相手のダイス表示 ---
 st.write(f"### 🛡️ 相手(P{opp_id})の刻印")
 o_dice = data.get(f"{opp}_dice", [1,1,1,1,1])
@@ -193,9 +205,14 @@ if not is_my_turn and current_phase == "DEF":
             
             # --- 反射・軽減ロジック ---
             if "反射" in g.cond_text or "返し" in g.cond_text:
-                # 反射ダメージを計算し、相手のHPを減らす
                 reflect_dmg = int(pending_dmg * g.power)
-                upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - reflect_dmg
+                new_opp_hp = data[f"hp{opp_id}"] - reflect_dmg
+                upd[f"hp{opp_id}"] = new_opp_hp
+                
+                # 相手のHPが0以下になったら、セッションに反射勝利フラグを立てる
+                if new_opp_hp <= 0:
+                    st.session_state.counter_finish = True
+                
                 st.success(f"✨ 反射！ 相手に {reflect_dmg} ダメージ返した！")
                 
                 # 「トゲトゲの盾」のような軽減併用タイプの場合
@@ -286,5 +303,6 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
