@@ -365,11 +365,10 @@ for idx, card in enumerate(pool):
                     else:
                         upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
                     
-                    # 3. 毒の判定
-                    if card.name == "固有:毒蛇の咆哮":
-                        upd[f"status{opp_id}"] = "poison"
-                        st.toast("☣️ 相手を毒状態にした！")
-
+                # --- 3. 毒の判定 (名前が完全に合っていなくても「毒」の文字があれば動くように変更) ---
+                if "毒" in card.name:
+                upd[f"status{opp_id}"] = "poison"
+                st.toast("☣️ 相手を毒状態にした！")
                     # 4. 消費処理
                     if is_innate:
                         upd[f"{me}_used_innate"] = my_used_innate + [card.name]
@@ -459,6 +458,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
