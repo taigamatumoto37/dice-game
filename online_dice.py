@@ -40,16 +40,31 @@ def update_db(u):
     try: supabase.table("game_state").update(u).eq("id", 1).execute()
     except Exception: pass
 
-# --- 3. UI スタイル ---
+# --- 3. UI スタイル (赤色ボタンの強化) ---
 st.markdown("""
 <style>
     .stApp { background-color: #0E1117; color: white; }
-    /* 赤色：振り直し */
-    div.stButton > button[key^="reroll"] { background-color: #FF4B4B !important; color: white !important; font-weight: bold !important; border-radius: 8px !important; }
-    /* 青色：交代・リセット */
-    div.stButton > button[key^="draw"], div.stButton > button[key^="reset"] { background-color: #1E90FF !important; color: white !important; border-radius: 8px !important; }
-    /* オレンジ：攻撃 */
-    div.stButton > button[key^="atk_"] { background-color: #FFA500 !important; color: black !important; font-weight: bold !important; border-radius: 8px !important; }
+    /* 🔴 強力な赤色：振り直しボタン */
+    div.stButton > button[key^="reroll_btn"] { 
+        background-color: #FF0000 !important; 
+        color: white !important; 
+        font-weight: bold !important; 
+        border: 2px solid #FF4B4B !important;
+        border-radius: 10px !important;
+    }
+    /* 🔵 青色：交代・リセット */
+    div.stButton > button[key^="draw_btn"], div.stButton > button[key^="reset_all"] { 
+        background-color: #1E90FF !important; 
+        color: white !important; 
+        border-radius: 10px !important; 
+    }
+    /* 🟠 オレンジ：攻撃カード */
+    div.stButton > button[key^="atk_"] { 
+        background-color: #FFA500 !important; 
+        color: black !important; 
+        font-weight: bold !important; 
+        border-radius: 10px !important; 
+    }
     .dice-box { background: #1A1C23; padding: 15px; text-align: center; font-size: 35px; border-radius: 12px; border: 2px solid #444; color: #00FFFF; }
     .opp-dice-box { border-color: #FF4B4B; color: #FF4B4B; opacity: 0.7; font-size: 25px; }
 </style>
@@ -119,7 +134,6 @@ if data["turn"] == (f"P{my_id}"):
             else: st.session_state.hand.remove(card.name)
             update_db(updates); st.rerun()
 
-    # 自分のターン内の末尾に配置
     st.divider()
     col_x, col_y = st.columns(2)
     with col_x:
@@ -144,7 +158,7 @@ else:
     time.sleep(2)
     st.rerun()
 
-# サイドバーのリセット
+# サイドバー
 if st.sidebar.button("🚨 全リセット", key="reset_all"):
     update_db({"hp1": 100, "hp2": 100, "turn": "P1", "turn_count": 0, "p1_used_innate": [], "p2_used_innate": [], "p1_bonus": 0, "p2_bonus": 0, "p1_dice": [1,1,1,1,1], "p2_dice": [1,1,1,1,1], "deck": ["ジェミニ・ダガー"]*10})
     st.session_state.hand = []; st.rerun()
