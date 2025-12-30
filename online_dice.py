@@ -332,14 +332,13 @@ for idx, card in enumerate(pool):
         
        # --- 4. ボタン表示エリア ---
         if st.session_state.get("is_discard_mode", False):
-            # 【捨てるモード】固有カード以外に「捨てる」ボタンを出す
+            # 【A: 捨てるモード】
             if not is_innate:
                 if st.button("🗑️ これを捨てる", key=f"discard_select_{idx}_{data['turn_count']}"):
                     current_hand = list(data.get(f"{me}_hand", []))
                     if card.name in current_hand:
-                        current_hand.remove(card.name) # 選択した1枚を削除
+                        current_hand.remove(card.name)
                     
-                    # 削除して5枚になったので、ここでターンを交代してモード終了
                     update_db({
                         f"{me}_hand": current_hand,
                         "turn": f"P{opp_id}",
@@ -348,15 +347,16 @@ for idx, card in enumerate(pool):
                     st.session_state.is_discard_mode = False
                     st.session_state.rolls = 2
                     st.rerun()
-                    else:
-                    if is_my_turn and is_ready:
+        else:
+            # 【B: 通常モード】
+            if is_my_turn and is_ready:
                 if st.button("発動", key=f"atk_{card.name}_{idx}_{data['turn_count']}"):
-                    play_se(SE_URL) # 効果音
+                    play_se(SE_URL) 
                     
-                    # 1. まず更新用のデータ（upd）の基本形を作る
+                    # 1. 更新データの基本形
                     upd = {
-                        "turn": f"P{opp_id}",             # 相手のターンに交代
-                        "turn_count": data["turn_count"] + 1 # ターン数を進める
+                        "turn": f"P{opp_id}",
+                        "turn_count": data["turn_count"] + 1
                     }
                     
                     # 2. ダメージ・回復計算
@@ -365,12 +365,12 @@ for idx, card in enumerate(pool):
                     else:
                         upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
                     
-                    # 3. 【重要】毒の判定を update_db の「前」に行う
+                    # 3. 毒の判定
                     if card.name == "固有:毒蛇の咆哮":
                         upd[f"status{opp_id}"] = "poison"
                         st.toast("☣️ 相手を毒状態にした！")
 
-                    # 4. 消費処理（固有スキルか通常手札か）
+                    # 4. 消費処理
                     if is_innate:
                         upd[f"{me}_used_innate"] = my_used_innate + [card.name]
                     else:
@@ -379,7 +379,7 @@ for idx, card in enumerate(pool):
                             new_hand.remove(card.name)
                         upd[f"{me}_hand"] = new_hand
                     
-                    # 5. 最後にまとめて一度だけDBを更新（これでターンも毒も反映される）
+                    # 5. DB更新とリセット
                     st.session_state.rolls = 2 
                     update_db(upd)
                     st.rerun()
@@ -459,6 +459,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
