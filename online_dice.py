@@ -1,47 +1,45 @@
 import streamlit as st
-import random
+from streamlit_gsheets import GSheetsConnection
+import pandas as pd
 import time
 
-# ページ設定
-st.set_page_config(page_title="Yahtzee Tactics Online", layout="wide")
+st.set_page_config(page_title="Yahtzee Tactics Online")
 
-# --- オンライン同期の仕組み（簡易版） ---
-# 本来はDBを使いますが、テスト用に「誰かが動かしたら全員に伝わる」
-# Streamlitのキャッシュ機能を使った疑似同期を実装します。
+# スプレッドシートへの接続
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-if "room_data" not in st.session_state:
-    st.session_state.room_data = {"p1_hp": 150, "p2_hp": 150, "turn": "P1"}
+# データの読み込み
+def load_data():
+    return conn.read(worksheet="Sheet1", ttl=0)
 
-st.title("⚔️ Yahtzee Tactics: GitHub Edition")
+df = load_data()
+p1_hp = df.at[0, "hp1"]
+p2_hp = df.at[0, "hp2"]
+turn = df.at[0, "turn"]
 
-# --- サイドバー ---
-role = st.sidebar.radio("あなたの役割", ["Player 1", "Player 2"])
-if st.sidebar.button("♻️ ゲームをリセット"):
-    st.session_state.room_data = {"p1_hp": 150, "p2_hp": 150, "turn": "P1"}
-    st.rerun()
+st.title("⚔️ G-Sheet Battle Online")
 
-# --- メイン画面 ---
-data = st.session_state.room_data
+role = st.sidebar.radio("役割", ["Player 1", "Player 2"])
+
 c1, c2 = st.columns(2)
-c1.metric("Player 1 HP", data["p1_hp"])
-c2.metric("Player 2 HP", data["p2_hp"])
+c1.metric("P1 HP", p1_hp)
+c2.metric("P2 HP", p2_hp)
 
-st.write(f"### 現在の番: {data['turn']}")
+is_my_turn = (role == "Player 1" and turn == "P1") or (role == "Player 2" and turn == "P2")
 
-# 自分の番の時だけボタンを表示
-if (role == "Player 1" and data["turn"] == "P1") or (role == "Player 2" and data["turn"] == "P2"):
-    if st.button("💥 攻撃する！"):
-        dmg = random.randint(15, 40)
-        if data["turn"] == "P1":
-            data["p2_hp"] -= dmg
-            data["turn"] = "P2"
-        else:
-            data["p1_hp"] -= dmg
-            data["turn"] = "P1"
-        st.success(f"{dmg} のダメージを与えた！")
+if is_my_turn:
+    if st.button("攻撃！"):
+        # データの更新処理
+        new_df = pd.DataFrame([{
+            "hp1": p1_hp if role == "Player 1" else p1_hp - 20,
+            "hp2": p2_hp - 20 if role == "Player 1" else p2_hp,
+            "turn": "P2" if turn == "P1" else "P1"
+        }])
+        conn.update(worksheet="Sheet1", data=new_df)
+        st.success("攻撃完了！")
         time.sleep(1)
         st.rerun()
 else:
-    st.info("相手の行動を待っています...")
-    time.sleep(2)
+    st.info("相手を待っています...")
+    time.sleep(3)
     st.rerun()
