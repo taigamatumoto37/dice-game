@@ -4,7 +4,7 @@ import time
 import random
 import streamlit.components.v1 as components
 
-
+MAX_HP = 100M
 # 効果音再生用関数
 def play_se(url):
     components.html(
@@ -447,6 +447,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
