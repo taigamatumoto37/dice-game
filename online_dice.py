@@ -128,50 +128,31 @@ if data["turn"] == my_turn_id:
                 update_db({"deck": deck, "turn": "P2" if my_turn_id=="P1" else "P1", "turn_count": data["turn_count"]+1})
                 st.rerun()
 
-# --- D. 攻撃フェーズの正しい構造 ---
+# --- D. 攻撃フェーズ (ここを丸ごと貼り替えてください) ---
+    
+    # 1. まず、使用可能なカードのリストを作る
+    used_innate = data.get(f"{me}_used_innate", [])
+    pool = [c for c in INNATE_CARDS if c.name not in used_innate]
+
+    # 手札にあるカードをオブジェクトに変換して追加
+    for card_name in st.session_state.get("my_hand", []):
+        if card_name in CARD_DB:
+            pool.append(CARD_DB[card_name])
+
+    # 【重要】ここで available を定義する
+    available = [c for c in pool if c.check(st.session_state.dice)]
+
+    # 2. その後で、available が空かどうかをチェックする
     if not available:
         st.error("揃っている役がありません。カードを引くか、振り直してください。")
     else:
-        # 役がある場合の処理（ここは一発インデントを下げる）
+        # 役がある場合の処理
         options = {f"{c.name} ({c.rarity})": c for c in available}
         selected_label = st.radio("使用する技を選択:", list(options.keys()))
         selected_card = options[selected_label]
 
         if st.button(f"🔥 {selected_card.name} を発動！"):
-            bonus = data.get(f"{me}_bonus", 0)
-            updates = {
-                "turn": "P2" if my_turn_id=="P1" else "P1", 
-                "turn_count": data["turn_count"] + 1
-            }
-            
-            # 効果の適用
-            if selected_card.type == "attack":
-                dmg = selected_card.power + bonus
-                target_hp_key = "hp2" if me == "p1" else "hp1"
-                updates[target_hp_key] = max(0, data[target_hp_key] - dmg)
-            
-            elif selected_card.type == "heal":
-                my_hp_key = "hp1" if me == "p1" else "hp2"
-                updates[my_hp_key] = min(100, data[my_hp_key] + selected_card.power)
-                
-            elif selected_card.type == "status":
-                s_name, s_turn = selected_card.status_effect
-                updates[f"{opp}_status"] = {s_name: s_turn}
-
-            # 消費処理
-            if "固有" in selected_card.name:
-                new_used = used_innate + [selected_card.name]
-                if len(new_used) >= 3:
-                    updates[f"{me}_bonus"] = bonus + 10
-                    updates[f"{me}_used_innate"] = []
-                else:
-                    updates[f"{me}_used_innate"] = new_used
-            else:
-                st.session_state.my_hand.remove(selected_card.name)
-            
-            update_db(updates)
-            st.rerun()
-
+            # ... (以下、攻撃処理の続き) ...
 # サイドバー：手札とリセット
 st.sidebar.write("### 🃏 あなたの手札")
 for h in st.session_state.get("my_hand", []):
@@ -185,5 +166,6 @@ if st.sidebar.button("♻️ フルリセット"):
     })
     st.session_state.my_hand = []
     st.rerun()
+
 
 
