@@ -2,7 +2,28 @@ import streamlit as st
 from supabase import create_client
 import time
 import random
+import streamlit.components.v1 as components
 
+# BGMの設定（YouTubeなどの直リンクや、GitHubに上げたMP3のURLなどを指定）
+# ※ここでは著作権フリーのサンプル音源を入れています
+bgm_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+
+components.html(
+    f"""
+    <audio id="bgm" src="{bgm_url}" loop></audio>
+    <script>
+        // ユーザーが画面のどこかをクリックした瞬間に再生を開始する
+        // (ブラウザの自動再生禁止制限を回避するため)
+        document.body.addEventListener('click', function() {{
+            var audio = document.getElementById('bgm');
+            if (audio.paused) {{
+                audio.play();
+            }}
+        }}, {{ once: true }});
+    </audio>
+    """,
+    height=0,
+)
 # --- 1. Supabase 接続 ---
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
@@ -245,6 +266,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
