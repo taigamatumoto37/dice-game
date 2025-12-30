@@ -128,6 +128,19 @@ def update_db(u):
 st.markdown("""
 <style>
 .innate-card {
+        border: 2px solid #FFD700 !important;
+        background: linear-gradient(145deg, #1A1C23, #2A2D35) !important;
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        position: relative;
+        overflow: hidden;
+    }
+    .innate-card::after {
+        content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        transform: rotate(45deg); animation: shine 3s infinite;
+    }
+    @keyframes shine { 0% { left: -100%; } 100% { left: 100%; } }
+.innate-card {
     border: 2px solid #FFD700 !important; /* 金色 */
     background: linear-gradient(145deg, #1A1C23, #2A2D35) !important;
     box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); /* 金色の光 */
@@ -368,6 +381,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
