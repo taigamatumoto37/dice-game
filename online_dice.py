@@ -330,7 +330,7 @@ for idx, card in enumerate(pool):
         </div>
         """, unsafe_allow_html=True)
         
-       # --- 4. ボタン表示エリア ---
+    # --- 4. ボタン表示エリア ---
         if st.session_state.get("is_discard_mode", False):
             # 【A: 捨てるモード】
             if not is_innate:
@@ -353,23 +353,24 @@ for idx, card in enumerate(pool):
                 if st.button("発動", key=f"atk_{card.name}_{idx}_{data['turn_count']}"):
                     play_se(SE_URL) 
                     
-                    # 1. 更新データの基本形
+                    # 1. 更新データの箱を作る
                     upd = {
                         "turn": f"P{opp_id}",
                         "turn_count": data["turn_count"] + 1
                     }
                     
-                    # 2. ダメージ・回復計算
+                    # 2. ダメージ・回復の基本計算
                     if card.type == "attack":
                         upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - card.power
                     else:
                         upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
                     
-                # --- 3. 毒の判定 ---
+                    # 3. 毒の判定 (名前が含まれているかチェック)
                     if "毒" in card.name:
-                        upd[f"status{opp_id}"] = "poison"   # ← ここを半角スペース4つ分右へ！
-                        st.toast("☣️ 相手を毒状態にした！")  # ← ここも同じ位置に揃える
-                    # 4. 消費処理
+                        upd[f"status{opp_id}"] = "poison"
+                        st.toast("☣️ 相手を毒状態にした！")
+
+                    # 4. 手札の消費処理
                     if is_innate:
                         upd[f"{me}_used_innate"] = my_used_innate + [card.name]
                     else:
@@ -378,7 +379,7 @@ for idx, card in enumerate(pool):
                             new_hand.remove(card.name)
                         upd[f"{me}_hand"] = new_hand
                     
-                    # 5. DB更新とリセット
+                    # 5. 最後にまとめて送信（ここが実行されないとターンが終わりません）
                     st.session_state.rolls = 2 
                     update_db(upd)
                     st.rerun()
@@ -458,6 +459,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
