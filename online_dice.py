@@ -128,8 +128,37 @@ for p_num in [1, 2]:
         hp = data[f"hp{p_num}"]
         st.write(f"### PLAYER {p_num} {'🔥' if data['turn'] == f'P{p_num}' else ''}")
         st.markdown(f"**❤️ HP: `{hp}`**")
+        # HPが100を超えてもバーが壊れないように計算
         hp_percent = max(0, (hp / 100) * 100)
         st.markdown(f"<div class='hp-bar-container'><div class='hp-bar-fill' style='width:{min(100, hp_percent)}%'></div></div>", unsafe_allow_html=True)
+
+# --- 勝敗判定（HP表示のすぐ下、メイン処理の中） ---
+p1_hp = data["hp1"]
+p2_hp = data["hp2"]
+
+if p1_hp <= 0 or p2_hp <= 0:
+    # 両方0以下の場合は引き分けか、ダメージを受けた側が負け
+    winner = "Player 2" if p1_hp <= 0 else "Player 1"
+    
+    st.markdown(f"""
+        <div style="text-align: center; padding: 50px; background-color: rgba(255,0,0,0.2); border-radius: 20px; border: 5px solid #FF0000; margin: 20px 0;">
+            <h1 style="color: #FF0000; font-size: 80px; margin-bottom: 0;">GAME OVER</h1>
+            <h2 style="color: white; font-size: 40px;">🏆 Winner: {winner}</h2>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("🔄 もう一度遊ぶ (リセット)"):
+        cards = list(CARD_DB.keys()); d = cards * 2; random.shuffle(d)
+        update_db({
+            "hp1": 100, "hp2": 100, 
+            "p1_hand":[], "p2_hand":[], 
+            "p1_used_innate":[], "p2_used_innate":[], 
+            "turn":"P1", "turn_count":0, 
+            "pending_damage":0, "phase":"ATK", 
+            "deck": d
+        })
+        st.rerun()
+    st.stop() # ここで止めることで、下のダイスロールなどは表示されなくなります
 # --- 相手のダイス表示 ---
 st.write(f"### 🛡️ 相手(P{opp_id})の刻印")
 o_dice = data.get(f"{opp}_dice", [1,1,1,1,1])
@@ -257,4 +286,5 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
