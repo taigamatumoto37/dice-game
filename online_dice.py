@@ -1,49 +1,44 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-import pandas as pd
+import random
 import time
 
-st.set_page_config(page_title="Yahtzee Tactics Online")
+# ページ設定
+st.set_page_config(page_title="Yahtzee Tactics Online", layout="wide")
 
-# スプレッドシートへの接続
-conn = st.connection("gsheets", type=GSheetsConnection)
+st.title("⚔️ Yahtzee Tactics")
 
-# データの読み込み
-def load_data():
-    # Secretsに保存したURLを直接使って読み込みます
-    url = st.secrets["public_gsheets_url"]
-    return conn.read(spreadsheet=url, worksheet="Sheet1", ttl=0)
+# --- データベースを使わず、自分のブラウザ内だけで動かす設定 ---
+if "hp1" not in st.session_state:
+    st.session_state.hp1 = 150
+    st.session_state.hp2 = 150
+    st.session_state.turn = "P1"
 
-df = load_data()
-p1_hp = df.at[0, "hp1"]
-p2_hp = df.at[0, "hp2"]
-turn = df.at[0, "turn"]
+# サイドバー
+role = st.sidebar.radio("あなたの役割", ["Player 1", "Player 2"])
 
-st.title("⚔️ G-Sheet Battle Online")
+# メイン表示
+col1, col2 = st.columns(2)
+col1.metric("Player 1 HP", st.session_state.hp1)
+col2.metric("Player 2 HP", st.session_state.hp2)
 
-role = st.sidebar.radio("役割", ["Player 1", "Player 2"])
+st.write(f"### 現在の番: {st.session_state.turn}")
 
-c1, c2 = st.columns(2)
-c1.metric("P1 HP", p1_hp)
-c2.metric("P2 HP", p2_hp)
-
-is_my_turn = (role == "Player 1" and turn == "P1") or (role == "Player 2" and turn == "P2")
+# 自分の番の判定
+is_my_turn = (role == "Player 1" and st.session_state.turn == "P1") or \
+             (role == "Player 2" and st.session_state.turn == "P2")
 
 if is_my_turn:
-    if st.button("攻撃！"):
-        # データの更新処理
-        new_df = pd.DataFrame([{
-            "hp1": p1_hp if role == "Player 1" else p1_hp - 20,
-            "hp2": p2_hp - 20 if role == "Player 1" else p2_hp,
-            "turn": "P2" if turn == "P1" else "P1"
-        }])
-        conn.update(worksheet="Sheet1", data=new_df)
-        st.success("攻撃完了！")
+    st.success("あなたの番です！")
+    if st.button("💥 攻撃する！"):
+        dmg = random.randint(15, 40)
+        if role == "Player 1":
+            st.session_state.hp2 -= dmg
+            st.session_state.turn = "P2"
+        else:
+            st.session_state.hp1 -= dmg
+            st.session_state.turn = "P1"
+        st.toast(f"{dmg} のダメージ！")
         time.sleep(1)
         st.rerun()
 else:
-    st.info("相手を待っています...")
-    time.sleep(3)
-    st.rerun()
-
-
+    st.info("相手の行動を待っています... (デモ版のため自分で役割を切り替えてください)")
