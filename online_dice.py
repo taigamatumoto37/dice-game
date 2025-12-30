@@ -43,10 +43,10 @@ def update_db(u): supabase.table("game_state").update(u).eq("id", 1).execute()
 st.markdown("""
 <style>
     .stApp { background-color: #0E1117; color: white; }
-    div.stButton > button { background-color: #FF4B4B !important; color: white !important; font-weight: bold !important; border-radius: 10px !important; }
+    div.stButton > button { background-color: #FF4B4B !important; color: white !important; font-weight: bold !important; border-radius: 10px !important; width: 100%; }
     .hp-text { font-size: 35px; font-weight: bold; color: #00FFAA; }
     .dice-box { background: #1A1C23; border: 2px solid #444; border-radius: 12px; padding: 10px; text-align: center; font-size: 40px; color: #00FFFF; }
-    .roll-count { font-size: 20px; color: #FFD700; font-weight: bold; }
+    .card-discard { background: #2D1414; border: 1px dashed #FF4B4B; padding: 10px; border-radius: 5px; margin-bottom: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -57,12 +57,15 @@ data = get_data()
 if data["hp1"] <= 0 or data["hp2"] <= 0:
     st.title("🏆 GAME OVER")
     st.write(f"勝者: {'Player 1' if data['hp2'] <= 0 else 'Player 2'}")
+    if st.button("♻️ ゲームリセット"):
+        update_db({"hp1": 150, "hp2": 150, "turn": "P1", "turn_count": 0})
+        st.rerun()
     st.stop()
 
 role = st.sidebar.radio("役割", ["Player 1", "Player 2"])
 me, opp, my_turn_id = ("p1", "p2", "P1") if role == "Player 1" else ("p2", "p1", "P2")
 
-st.title("⚔️ YAHTZEE TACTICS ONLINE")
+st.title("⚔️ YAHTZEE TACTICS")
 
 # HP表示
 c1, c2 = st.columns(2)
@@ -75,58 +78,59 @@ for i, p in enumerate(["p1", "p2"]):
 st.divider()
 
 if data["turn"] == my_turn_id:
-    # --- ターン開始処理 ---
+    # ターン開始初期化
     if st.session_state.get("last_t_count") != data["turn_count"]:
         st.session_state.dice = [random.randint(1, 6) for _ in range(5)]
-        st.session_state.rolls_left = 2 # 振り直し可能回数
+        st.session_state.rolls_left = 2
         st.session_state.keep = [False] * 5
         st.session_state["last_t_count"] = data["turn_count"]
         st.rerun()
 
-    st.markdown(f"<p class='roll-count'>残り振り直し回数: {st.session_state.rolls_left} 回</p>", unsafe_allow_html=True)
+    st.write(f"🎲 残り振り直し: {st.session_state.rolls_left} 回")
     
-    # ダイス表示とキープ選択
+    # ダイス表示
     d_cols = st.columns(5)
     for i in range(5):
         with d_cols[i]:
             st.markdown(f"<div class='dice-box'>{st.session_state.dice[i]}</div>", unsafe_allow_html=True)
             st.session_state.keep[i] = st.checkbox("Keep", key=f"k{i}", value=st.session_state.keep[i])
 
-    # --- 操作ボタン ---
+    # --- アクションエリア ---
     col_a, col_b = st.columns(2)
     
     with col_a:
         if st.session_state.rolls_left > 0:
-            if st.button("🎲 選択以外を振り直す"):
+            if st.button("🎲 振り直す"):
                 for i in range(5):
                     if not st.session_state.keep[i]:
                         st.session_state.dice[i] = random.randint(1, 6)
                 st.session_state.rolls_left -= 1
                 st.rerun()
-        else:
-            st.warning("これ以上振り直せません！")
-
+    
     with col_b:
-        if len(st.session_state.get("hand", [])) < 5:
+        hand = st.session_state.get("hand", [])
+        if len(hand) < 5:
             if st.button("🎴 確定してドロー交代"):
                 deck = data["deck"]
                 if deck:
-                    if "hand" not in st.session_state: st.session_state.hand = []
-                    st.session_state.hand.append(deck.pop())
+                    hand.append(deck.pop())
+                    st.session_state.hand = hand
                     update_db({"deck": deck, "turn": "P2" if my_turn_id=="P1" else "P1", "turn_count": data["turn_count"]+1})
                     st.rerun()
+        else:
+            st.error("手札が一杯です！1枚捨ててください。")
 
     # --- 攻撃フェーズ ---
     st.divider()
     used = data.get(f"{me}_used_innate", [])
     pool = [c for c in INNATE_CARDS if c.name not in used]
-    for h in st.session_state.get("hand", []):
+    for h in hand:
         if h in CARD_DB: pool.append(CARD_DB[h])
     
     available = [c for c in pool if c.condition_func(st.session_state.dice)]
 
     if available:
-        st.write("### ⚔️ 発動可能な技")
+        st.write("### ⚔️ 技を発動")
         for idx, card in enumerate(available):
             if st.button(f"発動：{card.name} ({card.cond_text})", key=f"atk_{idx}"):
                 latest = get_data()
@@ -134,16 +138,30 @@ if data["turn"] == my_turn_id:
                 if card.type == "attack":
                     target = "hp2" if me == "p1" else "hp1"
                     updates[target] = max(0, latest[target] - card.power)
-                elif card.type == "heal":
-                    updates[f"hp{1 if me=='p1' else 2}"] = min(150, latest[f"hp{1 if me=='p1' else 2}"] + card.power)
-                
-                if "固有" not in card.name: st.session_state.hand.remove(card.name)
+                if "固有" not in card.name: hand.remove(card.name)
+                st.session_state.hand = hand
                 update_db(updates)
                 st.rerun()
+
+    # --- カードを捨てる機能 (手札5枚の時のみ表示) ---
+    if len(hand) >= 5:
+        st.write("### 🗑️ カードを1枚捨ててドロー交代")
+        for idx, h_card in enumerate(hand):
+            c_col1, c_col2 = st.columns([3, 1])
+            c_col1.markdown(f"<div class='card-discard'>{h_card}</div>", unsafe_allow_html=True)
+            if c_col2.button("破棄", key=f"disc_{idx}"):
+                hand.pop(idx) # 選択したカードを捨てる
+                deck = data["deck"]
+                if deck:
+                    hand.append(deck.pop()) # 新しく1枚引く
+                st.session_state.hand = hand
+                update_db({"deck": deck, "turn": "P2" if my_turn_id=="P1" else "P1", "turn_count": data["turn_count"]+1})
+                st.rerun()
+
 else:
-    st.info("相手のターンを待っています...")
+    st.info("相手のターンです...")
     time.sleep(3)
     st.rerun()
 
-st.sidebar.write("### 手札")
+st.sidebar.write("### あなたの手札")
 for h in st.session_state.get("hand", []): st.sidebar.info(h)
