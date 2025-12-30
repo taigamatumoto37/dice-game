@@ -18,17 +18,14 @@ def play_se(url):
         height=0,
     )
 
-# あなたのGitHubから取得した「Raw」URL
-SE_URL = "https://github.com/taigamatumoto37/dice-game/raw/5c9c1c88d3d308d48494ed197ece6eb88a5ea8d3/%E6%B1%BA%E5%AE%9A%E3%83%9C%E3%82%BF%E3%83%B3%E3%82%92%E6%8A%BC%E3%81%998.mp3"
-# GitHubのRaw URL (あなたがアップロードしたファイル)
-bgm_url = "https://github.com/taigamatumoto37/dice-game/raw/main/001_%E3%80%90%E7%9D%A1%E7%9C%A030%E5%88%86%E5%89%8D%E7%94%A8%E3%80%91%E7%86%9F%E7%9D%A1%E3%81%A7%E3%81%8D%E3%82%8B%E7%9D%A1%E7%9C%A0%E7%94%A8BGM%20Smooth%20Jazz%E3%80%90%E5%BA%83%E5%91%8A%E3%81%AA%E3%81%97%E3%80%91Deep%20Sleep%2C%20Relaxing%2C%20Healing%2C%20Sleep%20Music%2C%2030%20miniutes.mp3"
 
-# BGM再生用のHTML/JavaScript
+SE_URL = "https://github.com/taigamatumoto37/dice-game/raw/5c9c1c88d3d308d48494ed197ece6eb88a5ea8d3/%E6%B1%BA%E5%AE%9A%E3%83%9C%E3%82%BF%E3%83%B3%E3%82%92%E6%8A%BC%E3%81%998.mp3"
+bgm_url = "https://github.com/taigamatumoto37/dice-game/raw/main/001_%E3%80%90%E7%9D%A1%E7%9C%A030%E5%88%86%E5%89%8D%E7%94%A8%E3%80%91%E7%86%9F%E7%9D%A1%E3%81%A7%E3%81%8D%E3%82%8B%E7%9D%A1%E7%9C%A0%E7%94%A8BGM%20Smooth%20Jazz%E3%80%90%E5%BA%83%E5%91%8A%E3%81%AA%E3%81%97%E3%80%91Deep%20Sleep%2C%20Relaxing%2C%20Healing%2C%20Sleep%20Music%2C%2030%20miniutes.mp3"
 components.html(
     f"""
     <audio id="bgm" src="{bgm_url}" loop></audio>
     <script>
-        // ブラウザの自動再生制限を回避するため、画面のどこかをクリックした瞬間に再生を開始する
+     
         window.parent.document.body.addEventListener('click', function() {{
             var audio = document.getElementById('bgm');
             if (audio.paused) {{
@@ -44,16 +41,13 @@ components.html(
 st.sidebar.markdown("---")
 st.sidebar.markdown("🎵 **BGM: Smooth Jazz**")
 st.sidebar.caption("※画面のどこかをクリックすると再生が始まります")
-# BGMの設定（YouTubeなどの直リンクや、GitHubに上げたMP3のURLなどを指定）
-# ※ここでは著作権フリーのサンプル音源を入れています
 bgm_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
 
 components.html(
     f"""
     <audio id="bgm" src="{bgm_url}" loop></audio>
     <script>
-        // ユーザーが画面のどこかをクリックした瞬間に再生を開始する
-        // (ブラウザの自動再生禁止制限を回避するため)
+       
         document.body.addEventListener('click', function() {{
             var audio = document.getElementById('bgm');
             if (audio.paused) {{
@@ -83,30 +77,21 @@ def check_yahtzee(d): return len(set(d)) == 1
 
 # --- 拡張版カードデータベース (30枚) ---
 CARD_DB = {
-    # 【攻撃系：基本 - 頻繁に撃てる】
     "ジェミニ・ダガー": Card("ジェミニ・ダガー", "attack", 12, check_pair, "ペア"),
     "トライ・ブラスト": Card("トライ・ブラスト", "attack", 20, check_three, "スリーカード"),
     "クアッド・ボルテックス": Card("クアッド・ボルテックス", "attack", 35, lambda d: any(d.count(x) >= 4 for x in set(d)), "フォーカード"),
     "五行封印斬": Card("五行封印斬", "attack", 60, check_yahtzee, "ヤッツィー (ロマン砲)"),
-    
-    # 【攻撃系：ストレート - 判定を緩和】
     "スモール・エッジ": Card("スモール・エッジ", "attack", 25, lambda d: len(set(d)) >= 3, "3種類以上の出目"), # 4連から3種へ
     "スカイ・ストライク": Card("スカイ・ストライク", "attack", 35, lambda d: len(set(d)) >= 4, "4種類以上の出目"), # Lストから4種へ
-    
-    # 【回復・防御系 - 立て直しやすく】
     "慈悲 of 祝福": Card("慈悲 of 祝福", "heal", 20, check_pair, "ペア"),
     "聖なる祈り": Card("聖なる祈り", "heal", 30, lambda d: any(x in d for x in [1, 6]), "1か6がある"), # ペアから1枚あればOKへ
     "生命の輝き": Card("生命の輝き", "heal", 45, check_three, "スリーカード"),
     "再生の福音": Card("再生の福音", "heal", 80, check_yahtzee, "ヤッツィー"),
-
-    # 【特殊・高難易度系】
     "フルハウス・バスター": Card("フルハウス・バスター", "attack", 40, lambda d: len(set(d)) <= 3, "出目が3種類以下"), # 条件緩和
     "偶数の審判": Card("偶数の審判", "attack", 30, lambda d: any(x % 2 == 0 for x in d), "偶数が1つでもある"),
     "奇数の洗礼": Card("奇数の洗礼", "attack", 30, lambda d: any(x % 2 != 0 for x in d), "奇数が1つでもある"),
     "ハイ・ローラー": Card("ハイ・ローラー", "attack", 35, lambda d: sum(d) >= 18, "合計18以上"), # 25から18へ
     "ロー・ローラー": Card("ロー・ローラー", "attack", 35, lambda d: sum(d) <= 15, "合計15以下"), # 10から15へ
-    
-    # 【バリエーション追加】
     "連撃の小太刀": Card("連撃の小太刀", "attack", 15, check_pair, "ペア"),
     "三連重破弾": Card("三連重破弾", "attack", 28, check_three, "スリーカード"),
     "天の逆鱗": Card("天の逆鱗", "attack", 70, check_yahtzee, "ヤッツィー"),
@@ -142,6 +127,29 @@ def update_db(u):
 # --- 3. CSS (写真のUI再現) ---
 st.markdown("""
 <style>
+.innate-card {
+    border: 2px solid #FFD700 !important; /* 金色 */
+    background: linear-gradient(145deg, #1A1C23, #2A2D35) !important;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); /* 金色の光 */
+    position: relative;
+    overflow: hidden;
+}
+.innate-card::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: shine 3s infinite;
+}
+
+@keyframes shine {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
     .stApp { background-color: #0E1117; color: white; }
     .hp-bar-container { background: #333; height: 10px; border-radius: 5px; margin-top: 5px; }
     .hp-bar-fill { background: #00FFAA; height: 100%; border-radius: 5px; transition: width 0.5s; }
@@ -360,6 +368,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
