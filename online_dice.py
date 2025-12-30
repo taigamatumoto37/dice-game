@@ -144,9 +144,10 @@ for i in range(5):
 st.divider()
 
 # --- ターン管理 (ここから入れ替え) ---
+# --- 5. ターン管理・メインループ ---
 is_my_turn = (data["turn"] == f"P{my_id}")
 
-# 1. ターンの初期化処理
+# 自分のターンの初期化処理
 if is_my_turn:
     if st.session_state.get("last_processed_turn") != data["turn_count"]:
         st.session_state.dice = [random.randint(1, 6) for _ in range(5)]
@@ -170,78 +171,83 @@ if is_my_turn:
             update_db({f"{me}_dice": st.session_state.dice})
             st.rerun()
 else:
-    # 相手のターン時は現在のダイスをクリア
-    st.session_state.dice = [0,0,0,0,0] 
-    st.info("相手のターンです。作戦を練りましょう...")
+    st.info(f"相手 ({data['turn']}) のターンです。待機中...")
 
 st.divider()
 
-# 2. 自分のカード一覧（相手のターンでも表示）
-# --- 自分のカード一覧を表示 (DBから取得) ---
+# --- 手札の表示とアクション (自分専用) ---
 st.write("### ⚔️ あなたのスキル")
-used = data.get(f"{me}_used_innate", [])
-my_hand_names = data.get(f"{me}_hand", []) # DBから自分の手札だけを取得
+used_innate = data.get(f"{me}_used_innate", [])
+my_hand = data.get(f"{me}_hand", [])  # DBから自分の手札のみ取得
 
-pool = [c for c in INNATE_DECK if c.name not in used]
-for h_name in my_hand_names:
-    if h_name in CARD_DB:
-        pool.append(CARD_DB[h_name])
+# 表示用プール作成
+pool = [c for c in INNATE_DECK if c.name not in used_innate]
+for h_name in my_hand:
+    if h_name in CARD_DB: pool.append(CARD_DB[h_name])
 
 sc = st.columns(3)
 for idx, card in enumerate(pool):
-    is_ready = card.condition_func(st.session_state.dice) if (is_my_turn and any(st.session_state.dice)) else False
+    # 自分のターン中のみダイスの役を判定
+    is_ready = card.condition_func(st.session_state.dice) if is_my_turn else False
     
     with sc[idx % 3]:
         st.markdown(f"<div class='skill-card' style='border-color: {'#00FFAA' if is_ready else '#FF5555'};'><b>{card.name}</b><br><small>威力：{card.power} | 条件：{card.cond_text}</small></div>", unsafe_allow_html=True)
         
         if is_my_turn and is_ready:
             if st.button("発動", key=f"atk_{idx}_{data['turn_count']}"):
-                upd = {"turn": f"P{opp_id}", "turn_count": data["turn_count"]+1}
-                # 威力計算
-                if card.type == "attack": upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - card.power
-                else: upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
+                updates = {"turn": f"P{opp_id}", "turn_count": data["turn_count"] + 1}
+                # HP更新
+                if card.type == "attack": updates[f"hp{opp_id}"] = data[f"hp{opp_id}"] - card.power
+                else: updates[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
                 
-                # 手札の更新
+                # 手札・固有使用済みリストの更新
                 if "固有" in card.name:
-                    new_used = used + [card.name]
-                    upd[f"{me}_used_innate"] = [] if len(new_used) >= 3 else new_used
+                    new_used = used_innate + [card.name]
+                    updates[f"{me}_used_innate"] = [] if len(new_used) >= 3 else new_used
                 else:
-                    my_hand_names.remove(card.name)
-                    upd[f"{me}_hand"] = my_hand_names # DB側の自分の手札を更新
+                    my_hand.remove(card.name)
+                    updates[f"{me}_hand"] = my_hand
                 
-                update_db(upd); st.rerun()
+                update_db(updates)
+                st.rerun()
 
-# 3. 終了処理と自動リロード
+# --- ターン終了・ドロー処理 ---
 if is_my_turn:
-    if st.button("ターンを終了してドロー", key=f"end_{data['turn_count']}"):
-        latest = get_data()
-        deck = latest.get("deck", [])
-        current_hand = latest.get(f"{me}_hand", [])
+    st.divider()
+    if st.button("ターンを終了してドロー", key=f"draw_end_{data['turn_count']}"):
+        # 最新の山札と手札を取得
+        current_deck = data.get("deck", [])
+        current_hand = data.get(f"{me}_hand", [])
         
-        if deck and len(current_hand) < 5:
-            new_card = deck.pop(0)
-            current_hand.append(new_card)
+        # ドロー処理
+        if current_deck and len(current_hand) < 5:
+            drawn_card = current_deck.pop(0)
+            current_hand.append(drawn_card)
         
+        # DB一括更新（手札、山札、ターン、カウント）
         update_db({
-            "deck": deck, 
-            f"{me}_hand": current_hand, # 自分のDB手札に保存
-            "turn": f"P{opp_id}", 
-            "turn_count": latest["turn_count"]+1
+            f"{me}_hand": current_hand,
+            "deck": current_deck,
+            "turn": f"P{opp_id}",
+            "turn_count": data["turn_count"] + 1
         })
         st.rerun()
-# リセット (サイドバー)
+else:
+    # 相手ターン中は自動リロード
+    time.sleep(3)
+    st.rerun()
+
+# --- サイドバー：全リセット ---
 if st.sidebar.button("🚨 全リセット"):
-    all_cards = list(CARD_DB.keys())
-    new_deck = all_cards * 2
+    all_card_names = list(CARD_DB.keys())
+    new_deck = all_card_names * 2
     random.shuffle(new_deck)
-    
     update_db({
-        "hp1": 150, "hp2": 150, 
-        "turn": "P1", "turn_count": 0, 
-        "p1_used_innate": [], "p2_used_innate": [], 
-        "p1_hand": [], "p2_hand": [], # ← 手札をDBで管理
-        "p1_dice": [1,1,1,1,1], "p2_dice": [1,1,1,1,1], 
-        "deck": new_deck 
+        "hp1": 150, "hp2": 150, "turn": "P1", "turn_count": 0,
+        "p1_used_innate": [], "p2_used_innate": [],
+        "p1_hand": [], "p2_hand": [],
+        "p1_dice": [1,1,1,1,1], "p2_dice": [1,1,1,1,1],
+        "deck": new_deck
     })
     st.rerun()
 
