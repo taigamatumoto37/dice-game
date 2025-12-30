@@ -414,48 +414,43 @@ if st.sidebar.button("🚨 全リセット"):
     st.session_state.hand = []
     st.rerun()
 
-if st.button("ゲームをリセットして開始"):
-    # 1. 全カードを定義したリストから新しい山札を作成してシャッフル
-    import random
-    all_card_names = [name for name, card in CARD_DB.items()]
-    new_deck = all_card_names.copy()
-    random.shuffle(new_deck)
+# --- サイドバーのリセットボタン ---
+with st.sidebar:
+    st.divider()  # 区切り線
+    st.markdown("### ⚙️ システム管理")
     
-    # 2. 初期データを作成
-    initial_data = {
-        "hp1": 100,
-        "hp2": 100,
-        "p1_hand": [],           # P1の手札を空に
-        "p2_hand": [],           # P2の手札を空に
-        "p1_used_innate": [],    # P1の使用済み固有スキルをリセット
-        "p2_used_innate": [],    # P2の使用済み固有スキルをリセット
-        "deck": new_deck,        # 新しい山札をセット
-        "turn": "P1",            # P1から開始
-        "turn_count": 1
-    }
-    
-    # 3. DBを完全に上書き
-    update_db(initial_data)
-    
-    # 4. ローカルの状態もリセット
-    st.session_state.dice = [0] * 5
-    st.session_state.rolls = 2
-    st.session_state.is_discard_mode = False
-    
-    st.success("ゲームを初期化しました！")
-    st.rerun()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    if st.button("🚨 全リセット (新ゲーム開始)", use_container_width=True):
+        # 1. 山札の再作成
+        import random
+        all_card_names = list(CARD_DB.keys())
+        # 全カード2枚ずつ入れてシャッフル（計60枚）
+        new_deck = all_card_names * 2
+        random.shuffle(new_deck)
+        
+        # 2. 初期化データの定義
+        initial_data = {
+            "hp1": 100,
+            "hp2": 100,
+            "p1_hand": [],           # 手札を空に
+            "p2_hand": [],           # 手札を空に
+            "p1_used_innate": [],    # 使用済み固有スキルを空に（＝復活）
+            "p2_used_innate": [],    # 使用済み固有スキルを空に（＝復活）
+            "p1_dice": [1, 1, 1, 1, 1],
+            "p2_dice": [1, 1, 1, 1, 1],
+            "deck": new_deck,
+            "turn": "P1",
+            "turn_count": 0
+        }
+        
+        # 3. DB更新
+        update_db(initial_data)
+        
+        # 4. ローカル状態（session_state）のクリア
+        st.session_state.dice = [0, 0, 0, 0, 0]
+        st.session_state.rolls = 2
+        st.session_state.is_discard_mode = False
+        if "hand" in st.session_state:
+            st.session_state.hand = []
+            
+        st.success("ゲームを初期化しました！")
+        st.rerun()
