@@ -100,7 +100,6 @@ INNATE_DECK = [
     Card("固有:生命の共鳴", "heal", 25, lambda d: len(set([x for x in d if d.count(x) >= 2])) >= 2, "2ペア"),
     Card("固有:等位の福音", "heal", 40, lambda d: len(set(d)) == 2 and any(d.count(x) == 3 for x in set(d)), "フルハウス"),
     Card("固有:轟力・大山波", "attack", 35, lambda d: sum(d) >= 22, "合計22以上"),
-    Card("固有:毒蛇の咆哮", "attack", 10, check_pair, "ペア (追加ダメージなし)"),
     Card("固有:静寂・小波斬", "attack", 25, lambda d: sum(d) <= 12, "合計12以下"),
 ]
 
@@ -292,3 +291,4 @@ with st.sidebar:
         st.session_state.rolls = 2
         st.session_state.is_discard_mode = False
         st.rerun()
+
