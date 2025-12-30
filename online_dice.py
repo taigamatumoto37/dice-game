@@ -325,7 +325,7 @@ for idx, card in enumerate(pool):
         </div>
         """, unsafe_allow_html=True)
         
-        # --- 4. ボタン表示エリア (ここを新しいロジックに差し替え) ---
+       # --- 4. ボタン表示エリア ---
         if st.session_state.get("is_discard_mode", False):
             # 【捨てるモード】固有カード以外に「捨てる」ボタンを出す
             if not is_innate:
@@ -344,7 +344,7 @@ for idx, card in enumerate(pool):
                     st.session_state.rolls = 2
                     st.rerun()
         else:
-            # 【通常モード】発動ボタンを表示（元の処理をここに含める）
+            # 【通常モード】発動ボタンを表示
             if is_my_turn and is_ready:
                 if st.button("発動", key=f"atk_{card.name}_{idx}_{data['turn_count']}"):
                     play_se(SE_URL) # 効果音
@@ -360,6 +360,11 @@ for idx, card in enumerate(pool):
                     else:
                         upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
                     
+                    # 【追加】毒の付与ロジック (インデント修正済み)
+                    if card.name == "固有:毒蛇の咆哮":
+                        upd[f"status{opp_id}"] = "poison"
+                        st.toast("☣️ 相手を毒状態にした！")
+
                     # 消費処理
                     if is_innate:
                         upd[f"{me}_used_innate"] = my_used_innate + [card.name]
@@ -370,12 +375,7 @@ for idx, card in enumerate(pool):
                         upd[f"{me}_hand"] = new_hand
                     
                     st.session_state.rolls = 2 # 振った回数リセット
-                    update_db(upd)
-                    if card.name == "固有:毒蛇の咆哮":
-                        upd[f"status{opp_id}"] = "poison" # 相手を毒に
-                        st.toast("☣️ 相手を毒状態にした！")
-    
-    update_db(upd)
+                    update_db(upd) # すべての更新（毒含む）を一度に反映
                     st.rerun()
 # --- 3. 終了処理とドロー (修正版) ---
 if is_my_turn:
@@ -453,6 +453,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
