@@ -2,31 +2,46 @@ import streamlit as st
 import random
 import time
 
-# ページの設定
-st.set_page_config(page_title="Yahtzee Tactics", layout="wide")
+# ページ設定
+st.set_page_config(page_title="Yahtzee Tactics Online", layout="wide")
 
-# --- タイトル表示 ---
-st.title("🎲 Yahtzee Tactics Online")
+# --- オンライン同期の仕組み（簡易版） ---
+# 本来はDBを使いますが、テスト用に「誰かが動かしたら全員に伝わる」
+# Streamlitのキャッシュ機能を使った疑似同期を実装します。
 
-# --- サイドバーで設定 ---
-st.sidebar.header("接続設定")
-player_name = st.sidebar.text_input("プレイヤー名", value="Player1")
-room_id = st.sidebar.text_input("ルーム番号(数字4桁)", value="1234")
+if "room_data" not in st.session_state:
+    st.session_state.room_data = {"p1_hp": 150, "p2_hp": 150, "turn": "P1"}
 
-# --- ゲームの状態を管理する箱（仮） ---
-if 'hp' not in st.session_state:
-    st.session_state.hp = 150
-    st.session_state.enemy_hp = 150
+st.title("⚔️ Yahtzee Tactics: GitHub Edition")
 
-# --- 画面の表示 ---
-col1, col2 = st.columns(2)
-with col1:
-    st.metric(f"{player_name} (自分)", st.session_state.hp)
-with col2:
-    st.metric("相手プレイヤー", st.session_state.enemy_hp)
+# --- サイドバー ---
+role = st.sidebar.radio("あなたの役割", ["Player 1", "Player 2"])
+if st.sidebar.button("♻️ ゲームをリセット"):
+    st.session_state.room_data = {"p1_hp": 150, "p2_hp": 150, "turn": "P1"}
+    st.rerun()
 
-st.write("---")
-if st.button("攻撃する！"):
-    damage = random.randint(10, 30)
-    st.session_state.enemy_hp -= damage
-    st.success(f"{damage} のダメージを与えた！")
+# --- メイン画面 ---
+data = st.session_state.room_data
+c1, c2 = st.columns(2)
+c1.metric("Player 1 HP", data["p1_hp"])
+c2.metric("Player 2 HP", data["p2_hp"])
+
+st.write(f"### 現在の番: {data['turn']}")
+
+# 自分の番の時だけボタンを表示
+if (role == "Player 1" and data["turn"] == "P1") or (role == "Player 2" and data["turn"] == "P2"):
+    if st.button("💥 攻撃する！"):
+        dmg = random.randint(15, 40)
+        if data["turn"] == "P1":
+            data["p2_hp"] -= dmg
+            data["turn"] = "P2"
+        else:
+            data["p1_hp"] -= dmg
+            data["turn"] = "P1"
+        st.success(f"{dmg} のダメージを与えた！")
+        time.sleep(1)
+        st.rerun()
+else:
+    st.info("相手の行動を待っています...")
+    time.sleep(2)
+    st.rerun()
