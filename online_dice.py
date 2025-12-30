@@ -444,6 +444,8 @@ with st.sidebar:
             "p2_dice": [1, 1, 1, 1, 1],
             "deck": new_deck,
             "turn": "P1",
+            "status1": "none",
+            "status2": "none",
             "turn_count": 0
         }
         
@@ -459,6 +461,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
