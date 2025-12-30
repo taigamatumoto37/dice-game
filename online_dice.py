@@ -6,6 +6,21 @@ import streamlit.components.v1 as components
 import streamlit as st
 import streamlit.components.v1 as components
 
+# 効果音再生用関数
+def play_se(url):
+    components.html(
+        f"""
+        <script>
+            var audio = new Audio("{url}");
+            audio.volume = 0.6; // 音量はここで調節(0.0〜1.0)
+            audio.play();
+        </script>
+        """,
+        height=0,
+    )
+
+# あなたのGitHubから取得した「Raw」URL
+SE_URL = "https://github.com/taigamatumoto37/dice-game/raw/5c9c1c88d3d308d48494ed197ece6eb88a5ea8d3/%E6%B1%BA%E5%AE%9A%E3%83%9C%E3%82%BF%E3%83%B3%E3%82%92%E6%8A%BC%E3%81%998.mp3"
 # GitHubのRaw URL (あなたがアップロードしたファイル)
 bgm_url = "https://github.com/taigamatumoto37/dice-game/raw/main/001_%E3%80%90%E7%9D%A1%E7%9C%A030%E5%88%86%E5%89%8D%E7%94%A8%E3%80%91%E7%86%9F%E7%9D%A1%E3%81%A7%E3%81%8D%E3%82%8B%E7%9D%A1%E7%9C%A0%E7%94%A8BGM%20Smooth%20Jazz%E3%80%90%E5%BA%83%E5%91%8A%E3%81%AA%E3%81%97%E3%80%91Deep%20Sleep%2C%20Relaxing%2C%20Healing%2C%20Sleep%20Music%2C%2030%20miniutes.mp3"
 
@@ -178,12 +193,20 @@ if is_my_turn:
         update_db({f"{me}_dice": st.session_state.dice})
         st.rerun()
 
-    st.write("### 🎲 運命の刻印")
+    st.write("### 🎲 ダイスを振る")
     dc = st.columns(5)
     for i in range(5):
         dc[i].markdown(f"<div class='dice-slot'>{st.session_state.dice[i]}</div>", unsafe_allow_html=True)
         st.session_state.keep[i] = dc[i].checkbox("Keep", key=f"k{i}_{data['turn_count']}")
-
+if st.button("🎲 ダイスを振る"):
+    # ...（シャッフルアニメーションのコード）...
+    
+    # 最後に確定した瞬間に音を鳴らす
+    play_se(SE_URL)
+    
+    st.session_state.dice = new_dice
+    update_db({f"{me}_dice": new_dice})
+    st.rerun()
     if st.session_state.rolls > 0:
         if st.button(f"もう一度振る (残り{st.session_state.rolls}回)", key=f"reroll_{data['turn_count']}"):
             for i in range(5):
@@ -292,6 +315,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
