@@ -255,6 +255,22 @@ def play_se(url):
 
 
 if is_my_turn:
+# --- 毒のダメージ実行ロジック ---
+if is_my_turn:
+    # 自分の現在のステータスを確認
+    my_status = data.get(f"status{my_id}", "none")
+    
+    if my_status == "poison":
+        # 1ターンに1回だけ処理するように「最後にダメージを受けたターン数」をチェック
+        if st.session_state.get("last_poison_turn") != data["turn_count"]:
+            # HPを5減らす
+            new_hp = max(0, data[f"hp{my_id}"] - 5)
+            update_db({f"hp{my_id}": new_hp})
+            
+            # 処理済みとして記録
+            st.session_state.last_poison_turn = data["turn_count"]
+            st.error(f"☣️ 毒のダメージを受けている！ HPが5減少した。 (残りHP: {new_hp})")
+            st.rerun()
     # 現在の残り振れる回数を表示
     remaining_rolls = st.session_state.get("rolls", 0)
     st.write(f"### 🎲 あなたの刻印 (残りリロール回数: {remaining_rolls})")
@@ -461,6 +477,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
