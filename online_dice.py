@@ -3,8 +3,7 @@ from supabase import create_client
 import time
 import random
 import streamlit.components.v1 as components
-import streamlit as st
-import streamlit.components.v1 as components
+
 
 # 効果音再生用関数
 def play_se(url):
@@ -193,20 +192,70 @@ if is_my_turn:
         update_db({f"{me}_dice": st.session_state.dice})
         st.rerun()
 
-    st.write("### 🎲 ダイスを振る")
-    dc = st.columns(5)
-    for i in range(5):
-        dc[i].markdown(f"<div class='dice-slot'>{st.session_state.dice[i]}</div>", unsafe_allow_html=True)
-        st.session_state.keep[i] = dc[i].checkbox("Keep", key=f"k{i}_{data['turn_count']}")
-if st.button("🎲 ダイスを振る"):
-    # ...（シャッフルアニメーションのコード）...
+   import streamlit as st
+import streamlit.components.v1 as components
+import time
+import random
+
+# --- 効果音の設定 ---
+# あなたがアップロードした決定音のRaw URL
+DICE_FIX_SE = "https://github.com/taigamatumoto37/dice-game/raw/5c9c1c88d3d308d48494ed197ece6eb88a5ea8d3/%E6%B1%BA%E5%AE%9A%E3%83%9C%E3%82%BF%E3%83%B3%E3%82%92%E6%8A%BC%E3%81%998.mp3"
+# 振り始めの音（もしあれば。なければ決定音と同じでもOK）
+DICE_ROLL_SE = "https://otologic.jp/free/se/wav/dice-roll1.wav" 
+
+def play_se(url):
+    """効果音を即時再生する関数"""
+    components.html(
+        f"""
+        <script>
+            var audio = new Audio("{url}");
+            audio.volume = 0.7;
+            audio.play();
+        </script>
+        """,
+        height=0,
+    )
+
+# --- ダイスを振る処理 ---
+if is_my_turn:
+    if st.button("🎲 ダイスを振る", use_container_width=True):
+        # 1. 振り始めの音を鳴らす
+        play_se(DICE_ROLL_SE)
+        
+        # 2. アニメーション演出
+        dice_placeholders = [st.empty() for _ in range(5)]
+        for _ in range(12):  # シャッフル回数
+            temp_dice = [random.randint(1, 6) for _ in range(5)]
+            cols = st.columns(5)
+            for i, val in enumerate(temp_dice):
+                dice_placeholders[i].markdown(
+                    f"<div style='font-size:40px; text-align:center; color:#555;'>{val}</div>", 
+                    unsafe_allow_html=True
+                )
+            time.sleep(0.06)
+        
+        # 3. 出目を確定させる
+        new_dice = [random.randint(1, 6) for _ in range(5)]
+        st.session_state.dice = new_dice
+        
+        # 4. ★ここで「決定ボタンを押す8.mp3」を鳴らす！★
+        play_se(DICE_FIX_SE)
+        
+        # 5. DBに保存して更新
+        update_db({f"{me}_dice": new_dice})
+        
+        # 確定した出目を大きく表示
+        cols = st.columns(5)
+        for i, v in enumerate(new_dice):
+            dice_placeholders[i].markdown(
+                f"<div style='font-size:45px; text-align:center; font-weight:bold; color:#00FFAA; border:2px solid #00FFAA; border-radius:10px;'>{v}</div>", 
+                unsafe_allow_html=True
+            )
+        
+        # 画面をリロードして反映
+        time.sleep(0.5)
+        ##st.rerun()
     
-    # 最後に確定した瞬間に音を鳴らす
-    play_se(SE_URL)
-    
-    st.session_state.dice = new_dice
-    update_db({f"{me}_dice": new_dice})
-    st.rerun()
     if st.session_state.rolls > 0:
         if st.button(f"もう一度振る (残り{st.session_state.rolls}回)", key=f"reroll_{data['turn_count']}"):
             for i in range(5):
@@ -315,6 +364,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
