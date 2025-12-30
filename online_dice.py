@@ -192,10 +192,7 @@ if is_my_turn:
         update_db({f"{me}_dice": st.session_state.dice})
         st.rerun()
 
-   import streamlit as st
-import streamlit.components.v1 as components
-import time
-import random
+
 
 # --- 効果音の設定 ---
 # あなたがアップロードした決定音のRaw URL
@@ -364,6 +361,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
