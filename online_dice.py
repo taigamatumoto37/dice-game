@@ -238,18 +238,21 @@ else:
     st.rerun()
 
 # --- サイドバー：全リセット ---
-if st.sidebar.button("🚨 全リセット"):
-    all_card_names = list(CARD_DB.keys())
-    new_deck = all_card_names * 2
-    random.shuffle(new_deck)
-    update_db({
-        "hp1": 150, "hp2": 150, "turn": "P1", "turn_count": 0,
-        "p1_used_innate": [], "p2_used_innate": [],
-        "p1_hand": [], "p2_hand": [],
-        "p1_dice": [1,1,1,1,1], "p2_dice": [1,1,1,1,1],
-        "deck": new_deck
-    })
-    st.rerun()
 
+if st.sidebar.button("🚨 全リセット"):
+    # 全カードリストを取得してシャッフル
+    all_cards = list(CARD_DB.keys())
+    new_deck = all_cards * 2  # 各カード2枚ずつ、合計60枚の山札
+    random.shuffle(new_deck)
+    
+    update_db({
+        "hp1": 150, "hp2": 150, 
+        "turn": "P1", "turn_count": 0, 
+        "p1_used_innate": [], "p2_used_innate": [], 
+        "p1_dice": [1,1,1,1,1], "p2_dice": [1,1,1,1,1], 
+        "deck": new_deck  # ここで全種類の入った山札をセット
+    })
+    st.session_state.hand = []
+    st.rerun()
 
 
