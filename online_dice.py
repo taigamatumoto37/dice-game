@@ -10,7 +10,9 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 # データの読み込み
 def load_data():
-    return conn.read(worksheet="Sheet1", ttl=0)
+    # Secretsに保存したURLを直接使って読み込みます
+    url = st.secrets["public_gsheets_url"]
+    return conn.read(spreadsheet=url, worksheet="Sheet1", ttl=0)
 
 df = load_data()
 p1_hp = df.at[0, "hp1"]
@@ -43,3 +45,4 @@ else:
     st.info("相手を待っています...")
     time.sleep(3)
     st.rerun()
+
