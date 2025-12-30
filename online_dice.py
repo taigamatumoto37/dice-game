@@ -308,7 +308,7 @@ for idx, card in enumerate(pool):
     title_color = "#FFD700" if is_innate else ("#00FFAA" if is_ready else "white")
 
     with sc[idx % 3]:
-        # --- 3. カードのHTML表示 ---
+        # --- 3. カードのHTML表示 (ここはそのまま) ---
         st.markdown(f"""
         <div class='{card_class}' style='border-color: {border_color};'>
             <b style='color: {title_color};'>{card.name}</b><br>
@@ -316,57 +316,84 @@ for idx, card in enumerate(pool):
         </div>
         """, unsafe_allow_html=True)
         
-        # --- 4. 発動ボタンと実際の処理 ---
-        if is_my_turn and is_ready:
-            if st.button("発動", key=f"atk_{card.name}_{idx}_{data['turn_count']}"):
-                play_se(SE_URL) # 効果音
-                
-                upd = {
-                    "turn": f"P{opp_id}", 
-                    "turn_count": data["turn_count"] + 1
-                }
-                
-                # ダメージ・回復計算
-                if card.type == "attack":
-                    upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - card.power
-                else:
-                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
-                
-                # 消費処理
-                if is_innate:
-                    upd[f"{me}_used_innate"] = my_used_innate + [card.name]
-                else:
-                    new_hand = list(my_hand_from_db)
-                    if card.name in new_hand:
-                        new_hand.remove(card.name)
-                    upd[f"{me}_hand"] = new_hand
-                
-                st.session_state.rolls = 2 # 振った回数リセット
-                update_db(upd)
-                st.rerun()
-# 3. 終了処理とドロー
+        # --- 4. ボタン表示エリア (ここを新しいロジックに差し替え) ---
+        if st.session_state.get("is_discard_mode", False):
+            # 【捨てるモード】固有カード以外に「捨てる」ボタンを出す
+            if not is_innate:
+                if st.button("🗑️ これを捨てる", key=f"discard_select_{idx}_{data['turn_count']}"):
+                    current_hand = list(data.get(f"{me}_hand", []))
+                    if card.name in current_hand:
+                        current_hand.remove(card.name) # 選択した1枚を削除
+                    
+                    # 削除して5枚になったので、ここでターンを交代してモード終了
+                    update_db({
+                        f"{me}_hand": current_hand,
+                        "turn": f"P{opp_id}",
+                        "turn_count": data["turn_count"] + 1
+                    })
+                    st.session_state.is_discard_mode = False
+                    st.session_state.rolls = 2
+                    st.rerun()
+        else:
+            # 【通常モード】発動ボタンを表示（元の処理をここに含める）
+            if is_my_turn and is_ready:
+                if st.button("発動", key=f"atk_{card.name}_{idx}_{data['turn_count']}"):
+                    play_se(SE_URL) # 効果音
+                    
+                    upd = {
+                        "turn": f"P{opp_id}", 
+                        "turn_count": data["turn_count"] + 1
+                    }
+                    
+                    # ダメージ・回復計算
+                    if card.type == "attack":
+                        upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - card.power
+                    else:
+                        upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
+                    
+                    # 消費処理
+                    if is_innate:
+                        upd[f"{me}_used_innate"] = my_used_innate + [card.name]
+                    else:
+                        new_hand = list(my_hand_from_db)
+                        if card.name in new_hand:
+                            new_hand.remove(card.name)
+                        upd[f"{me}_hand"] = new_hand
+                    
+                    st.session_state.rolls = 2 # 振った回数リセット
+                    update_db(upd)
+                    st.rerun()
+# --- 3. 終了処理とドロー (修正版) ---
 if is_my_turn:
-    if st.button("ターンを終了してドロー", key=f"end_{data['turn_count']}"):
-        latest = get_data()
-        deck = latest.get("deck", [])
-        current_my_hand = list(latest.get(f"{me}_hand", []))
-        
-        if deck:
-            # 山札から1枚引く
-            new_card = deck.pop(0)
-            if len(current_my_hand) < 5:
-                current_my_hand.append(new_card)
-        
-        # 自分の手札カラムだけを更新
-        update_db({
-            "deck": deck,
-            f"{me}_hand": current_my_hand,
-            "turn": f"P{opp_id}",
-            "turn_count": latest["turn_count"] + 1
-        })
-        # 振った回数もリセット
-        st.session_state.rolls = 2
-        st.rerun()
+    # 捨てるモードでない時だけドローボタンを表示
+    if not st.session_state.get("is_discard_mode", False):
+        if st.button("ターンを終了してドロー", key=f"end_{data['turn_count']}"):
+            latest = get_data()
+            deck = latest.get("deck", [])
+            current_my_hand = list(latest.get(f"{me}_hand", []))
+            
+            if deck:
+                new_card = deck.pop(0)
+                current_my_hand.append(new_card) # 一旦追加（最大6枚になる）
+                
+                # 手札が5枚を超えた場合の判定
+                if len(current_my_hand) > 5:
+                    # 捨てるモード起動（まだターンは交代しない）
+                    st.session_state.is_discard_mode = True
+                    update_db({
+                        "deck": deck,
+                        f"{me}_hand": current_my_hand
+                    })
+                else:
+                    # 5枚以下なら通常通りドローしてターン交代
+                    update_db({
+                        "deck": deck,
+                        f"{me}_hand": current_my_hand,
+                        "turn": f"P{opp_id}",
+                        "turn_count": latest["turn_count"] + 1
+                    })
+                    st.session_state.rolls = 2
+            st.rerun()
 # --- ここまで入れ替え ---
 
 
@@ -386,6 +413,7 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
 
