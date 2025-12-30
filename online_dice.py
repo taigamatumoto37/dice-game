@@ -121,23 +121,26 @@ if data["turn"] == (f"P{my_id}"):
             else: st.session_state.hand.remove(card.name)
             update_db(updates); st.rerun()
 
-    st.divider()
+   st.divider()
     col_x, col_y = st.columns(2)
-    with col_x: # 振り直し（赤）
+    with col_x: # 振り直し（赤色ボタン）
         if st.session_state.rolls_left > 0:
-            if st.button(f"🎲 振り直し (赤) 残{st.session_state.rolls_left}", key="reroll_btn"):
+            # 「(赤)」という文字を削除
+            if st.button(f"🎲 選択以外を振り直す (残り{st.session_state.rolls_left}回)", key="reroll_btn"):
                 for i in range(5):
                     if not st.session_state.keep[i]: st.session_state.dice[i] = random.randint(1, 6)
                 st.session_state.rolls_left -= 1
                 update_db({f"{me}_dice": st.session_state.dice})
                 st.rerun()
-    with col_y: # 交代（青）
-        if st.button(f"🎴 ドロー交代 (青) {len(st.session_state.hand)}/5", key="draw_btn"):
+    with col_y: # 交代（青色ボタン）
+        # 「(青)」という文字を削除
+        if st.button(f"🎴 確定してドロー・交代 (手札:{len(st.session_state.hand)}/5)", key="draw_btn"):
             deck = data["deck"]
             if deck and len(st.session_state.hand) < 5:
                 st.session_state.hand.append(deck.pop())
                 update_db({"deck": deck, "turn": f"P{opp_id}", "turn_count": data["turn_count"]+1})
-            else: update_db({"turn": f"P{opp_id}", "turn_count": data["turn_count"]+1})
+            else: 
+                update_db({"turn": f"P{opp_id}", "turn_count": data["turn_count"]+1})
             st.rerun()
 
 else:
@@ -148,3 +151,4 @@ else:
 if st.sidebar.button("🚨 全リセット(青)", key="reset_all"):
     update_db({"hp1": 100, "hp2": 100, "turn": "P1", "turn_count": 0, "p1_used_innate": [], "p2_used_innate": [], "p1_bonus": 0, "p2_bonus": 0, "p1_dice": [1,1,1,1,1], "p2_dice": [1,1,1,1,1], "deck": ["ジェミニ・ダガー"]*10})
     st.session_state.hand = []; st.rerun()
+
