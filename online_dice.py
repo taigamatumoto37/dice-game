@@ -4,7 +4,7 @@ import time
 import random
 import streamlit.components.v1 as components
 
-MAX_HP = 100
+
 
 # 効果音再生用関数
 def play_se(url):
@@ -74,6 +74,14 @@ CARD_DB = {
     "光の防壁": Card("光の防壁", "heal", 35, lambda d: check_pair(d), "ペア"),
     "アイアン・ウォール": Card("アイアン・ウォール", "guard", 15, lambda d: True, "無条件"),
     "マジック・ミラー": Card("マジック・ミラー", "guard", 30, lambda d: True, "無条件"),
+    "女神の休息": Card("女神の休息", "heal", 15, lambda d: True, "無条件"), # 追加
+    "癒しの波動": Card("癒しの波動", "heal", 25, check_pair, "ペア"), # 追加
+    "エナジー・ドレイン": Card("エナジー・ドレイン", "heal", 45, lambda d: sum(d) >= 20, "合計20以上"), # 追加
+    "ナイト・シールド": Card("ナイト・シールド", "guard", 25, lambda d: True, "無条件"), # 追加
+    "ホーリー・バリア": Card("ホーリー・バリア", "guard", 45, lambda d: True, "無条件"), # 追加
+    "ミラー・シールド": Card("ミラー・シールド", "guard", 1.0, lambda d: True, "100%反射"),
+    "トゲトゲの盾": Card("トゲトゲの盾", "guard", 0.5, lambda d: True, "50%反射+50%軽減"),
+}
 }
 
 INNATE_DECK = [
@@ -119,10 +127,9 @@ for p_num in [1, 2]:
     with (c1 if p_num == 1 else c2):
         hp = data[f"hp{p_num}"]
         st.write(f"### PLAYER {p_num} {'🔥' if data['turn'] == f'P{p_num}' else ''}")
-        st.markdown(f"**❤️ HP: `{hp}` / {MAX_HP}**")
-        hp_percent = max(0, min(100, (hp / MAX_HP) * 100)) 
-        st.markdown(f"<div class='hp-bar-container'><div class='hp-bar-fill' style='width:{hp_percent}%'></div></div>", unsafe_allow_html=True)
-
+        st.markdown(f"**❤️ HP: `{hp}`**")
+        hp_percent = max(0, (hp / 100) * 100)
+        st.markdown(f"<div class='hp-bar-container'><div class='hp-bar-fill' style='width:{min(100, hp_percent)}%'></div></div>", unsafe_allow_html=True)
 # --- 相手のダイス表示 ---
 st.write(f"### 🛡️ 相手(P{opp_id})の刻印")
 o_dice = data.get(f"{opp}_dice", [1,1,1,1,1])
@@ -138,32 +145,44 @@ current_phase = data.get("phase", "ATK")
 pending_dmg = data.get("pending_damage", 0)
 
 # --- 防御側の処理：相手が攻撃してきたとき ---
+# --- 防御側の処理 ---
 if not is_my_turn and current_phase == "DEF":
-    st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージが来ます！")
-    my_hand_names = data.get(f"{me}_hand", [])
-    guards = [CARD_DB[name] for name in my_hand_names if name in CARD_DB and CARD_DB[name].type == "guard"]
+    st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
+    my_hand = data.get(f"{me}_hand", [])
+    guards = [CARD_DB[n] for n in my_hand if n in CARD_DB and CARD_DB[n].type == "guard"]
     
-    cols = st.columns(len(guards) + 1 if guards else 1)
-    for i, g_card in enumerate(guards):
-        with cols[i]:
-            if st.button(f"🛡️ {g_card.name}\n(軽減: {g_card.power})", key=f"guard_{i}"):
-                final_dmg = max(0, pending_dmg - g_card.power)
-                new_hand = [n for n in my_hand_names if n != g_card.name]
-                update_db({
-                    f"hp{my_id}": data[f"hp{my_id}"] - final_dmg,
-                    f"{me}_hand": new_hand,
-                    "pending_damage": 0, "phase": "ATK",
-                    "turn": f"P{my_id}", "turn_count": data["turn_count"] + 1
-                })
-                st.rerun()
-    with cols[-1]:
-        if st.button("そのまま受ける", type="primary"):
-            update_db({
-                f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
-                "pending_damage": 0, "phase": "ATK",
-                "turn": f"P{my_id}", "turn_count": data["turn_count"] + 1
-            })
+    cols = st.columns(len(guards) + 1)
+    for i, g in enumerate(guards):
+        if cols[i].button(f"🛡️ {g.name}"):
+            upd = {
+                "pending_damage": 0,
+                "phase": "ATK",
+                "turn": f"P{my_id}",
+                "turn_count": data["turn_count"] + 1,
+                f"{me}_hand": [n for n in my_hand if n != g.name]
+            }
+            
+            # --- 反射・軽減ロジック ---
+            if "反射" in g.cond_text or "返し" in g.cond_text:
+                # 反射ダメージを計算し、相手のHPを減らす
+                reflect_dmg = int(pending_dmg * g.power)
+                upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - reflect_dmg
+                st.success(f"✨ 反射！ 相手に {reflect_dmg} ダメージ返した！")
+                
+                # 「トゲトゲの盾」のような軽減併用タイプの場合
+                if "軽減" in g.cond_text:
+                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - (pending_dmg * 0.5))
+            else:
+                # 通常のガード（軽減）
+                upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
+            
+            update_db(upd)
+            time.sleep(1) # 演出を見せるため
             st.rerun()
+            
+    if cols[-1].button("そのまま受ける"):
+        update_db({f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg, "pending_damage": 0, "phase": "ATK", "turn": f"P{my_id}", "turn_count": data["turn_count"]+1})
+        st.rerun()
     st.stop()
 
 # --- 攻撃側の待機表示 ---
@@ -238,3 +257,4 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
