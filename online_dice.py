@@ -198,29 +198,6 @@ if is_my_turn:
         is_keep = st.checkbox(f"Keep", key=f"keep_{i}_{data['turn_count']}", value=st.session_state.get("keep", [False]*5)[i])
         st.session_state.keep[i] = is_keep
         cols[i].markdown(f"<div class='dice-slot'>{'?' if not any(st.session_state.dice) else st.session_state.dice[i]}</div>", unsafe_allow_html=True)
-
-    if remaining_rolls > 0:
-        if st.button(f"🎲 ダイスを振る (残り{remaining_rolls}回)", use_container_width=True):
-            play_se(DICE_FIX_SE)
-            dice_placeholders = [st.empty() for _ in range(5)]
-            for _ in range(10):
-                temp_vals = [random.randint(1, 6) for _ in range(5)]
-                for i in range(5):
-                    if not st.session_state.keep[i]:
-                        dice_placeholders[i].markdown(f"<div class='dice-slot' style='color:#555;'>{temp_vals[i]}</div>", unsafe_allow_html=True)
-                time.sleep(0.05)
-            for i in range(5):
-                if not st.session_state.keep[i]:
-                    st.session_state.dice[i] = random.randint(1, 6)
-            st.session_state.rolls -= 1
-            update_db({f"{me}_dice": st.session_state.dice})
-            st.rerun()
-    else:
-        st.warning("⚠️ これ以上ダイスは振れません。")
-else:
-    st.info("相手のターンです。")
-    st.session_state.dice = [0,0,0,0,0]
-
 st.write(f"### ⚔️ PLAYER {my_id} のスキル")
 my_hand_from_db = list(data.get(f"{me}_hand", []))
 my_used_innate = list(data.get(f"{me}_used_innate", []))
@@ -232,13 +209,35 @@ sc = st.columns(3)
 for idx, card in enumerate(pool):
     is_ready = card.condition_func(st.session_state.dice) if (is_my_turn and any(st.session_state.dice)) else False
     is_innate = "固有" in card.name
+    
+    # --- 🔵 ここから追加：タイプによる色の決定 ---
+    if card.type == "attack":
+        type_color = "#FF5555"  # 攻撃は赤
+        type_icon = "⚔️"
+    else:
+        type_color = "#00FFAA"  # 回復は緑
+        type_icon = "💖"
+    
+    # 枠線の色：固有なら金、準備完了ならタイプの色（赤or緑）、それ以外はグレー
+    border_color = "#FFD700" if is_innate else (type_color if is_ready else "#555555")
+    # タイトル色：準備完了ならタイプの色、それ以外は白（固有は金）
+    title_color = "#FFD700" if is_innate else (type_color if is_ready else "white")
+    
     card_class = "skill-card innate-card" if is_innate else "skill-card"
-    border_color = "#FFD700" if is_innate else ("#00FFAA" if is_ready else "#FF5555")
-    title_color = "#FFD700" if is_innate else ("#00FFAA" if is_ready else "white")
 
     with sc[idx % 3]:
-        st.markdown(f"<div class='{card_class}' style='border-color: {border_color};'><b style='color: {title_color};'>{card.name}</b><br><small style='color: #CCCCCC;'>威力：{card.power} | 条件：{card.cond_text}</small></div>", unsafe_allow_html=True)
+        # HTML表示部分（アイコンとラベルを追加）
+        st.markdown(f"""
+        <div class='{card_class}' style='border-color: {border_color}; border-width: {'3px' if is_ready else '1px'};'>
+            <div style='display: flex; justify-content: space-between;'>
+                <b style='color: {title_color};'>{card.name}</b>
+                <span style='font-size: 0.8em; color: {type_color};'>{type_icon}</span>
+            </div>
+            <small style='color: #CCCCCC;'>威力：{card.power} | 条件：{card.cond_text}</small>
+        </div>
+        """, unsafe_allow_html=True)
         
+        # --- ボタン表示エリア (元のロジックを維持) ---
         if st.session_state.get("is_discard_mode", False):
             if not is_innate:
                 if st.button("🗑️ 捨てる", key=f"discard_{idx}_{data['turn_count']}"):
@@ -296,5 +295,6 @@ with st.sidebar:
         st.session_state.rolls = 2
         st.session_state.is_discard_mode = False
         st.rerun()
+
 
 
