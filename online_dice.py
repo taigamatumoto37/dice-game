@@ -348,7 +348,7 @@ for idx, card in enumerate(pool):
                     st.session_state.is_discard_mode = False
                     st.session_state.rolls = 2
                     st.rerun()
-      else:
+          else:
             # 【通常モード】発動ボタンを表示
             if is_my_turn and is_ready:
                 if st.button("発動", key=f"atk_{card.name}_{idx}_{data['turn_count']}"):
@@ -460,6 +460,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
