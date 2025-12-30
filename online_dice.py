@@ -239,7 +239,7 @@ else:
 
 # --- サイドバー：全リセット ---
 
-if st.sidebar.button("🚨 全リセット"):
+if st.sidebar.button("🚨 リセット"):
     # 全カードリストを取得してシャッフル
     all_cards = list(CARD_DB.keys())
     new_deck = all_cards * 2  # 各カード2枚ずつ、合計60枚の山札
@@ -254,5 +254,6 @@ if st.sidebar.button("🚨 全リセット"):
     })
     st.session_state.hand = []
     st.rerun()
+
 
 
