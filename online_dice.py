@@ -128,41 +128,69 @@ if data["turn"] == my_turn_id:
                 update_db({"deck": deck, "turn": "P2" if my_turn_id=="P1" else "P1", "turn_count": data["turn_count"]+1})
                 st.rerun()
 
-    # D. 攻撃
-    used_innate = data.get(f"{me}_used_innate", [])
-    pool = [c for c in INNATE_CARDS if c.name not in used_innate]
-    pool += [CARD_DB[name] for name in st.session_state.my_hand]
-    
-    available = [c for c in pool if c.check(st.session_state.dice)]
-    
-    if available:
-        selected = st.radio("技を選択:", available, format_func=lambda x: f"{x.name} ({x.rarity}) - 威力:{x.power}")
-        if st.button("発動！"):
-            bonus = data.get(f"{me}_bonus", 0)
-            updates = {"turn": "P2" if my_turn_id=="P1" else "P1", "turn_count": data["turn_count"]+1}
-            
-            if selected.type == "attack":
-                dmg = selected.power + bonus
-                updates[f"hp{2 if me=='p1' else 1}"] = max(0, data[f"hp{2 if me=='p1' else 1}"] - dmg)
-            elif selected.type == "heal":
-                updates[f"hp{1 if me=='p1' else 2}"] = min(100, data[f"hp{1 if me=='p1' else 2}"] + selected.power)
-            elif selected.type == "status":
-                s_name, s_turn = selected.status_effect
-                updates[f"{opp}_status"] = {s_name: s_turn}
+   # --- D. 攻撃フェーズ ---
+used_innate = data.get(f"{me}_used_innate", [])
+# プールを作成（固有技 + 手札）
+pool = [c for c in INNATE_CARDS if c.name not in used_innate]
 
-            # 消費と覚醒
-            if "固有" in selected.name:
-                used_innate.append(selected.name)
-                if len(used_innate) == 3:
-                    updates[f"{me}_bonus"] = bonus + 10
-                    updates[f"{me}_used_innate"] = []
-                else:
-                    updates[f"{me}_used_innate"] = used_innate
-            else:
-                st.session_state.my_hand.remove(selected.name)
+# 手札にある名前からカードオブジェクトを復元して追加
+for card_name in st.session_state.get("my_hand", []):
+    if card_name in CARD_DB:
+        pool.append(CARD_DB[card_name])
+
+# 現在のダイスで使えるカードを抽出
+available = [c for c in pool if c.check(st.session_state.dice)]
+
+if not available:
+    st.error("揃っている役がありません。カードを引くか、振り直してください。")
+else:
+    # 選択肢を分かりやすく表示
+    options = {f"{c.name} ({c.rarity})": c for c in available}
+    selected_label = st.radio("使用する技を選択してください:", list(options.keys()))
+    selected_card = options[selected_label]
+
+    if st.button(f"🔥 {selected_card.name} を発動！"):
+        bonus = data.get(f"{me}_bonus", 0)
+        # 次のターンのための基本データ
+        updates = {
+            "turn": "P2" if my_turn_id=="P1" else "P1", 
+            "turn_count": data["turn_count"] + 1
+        }
+        
+        # 1. 効果の種類に応じて処理
+        if selected_card.type == "attack":
+            dmg = selected_card.power + bonus
+            target_hp_key = "hp2" if me == "p1" else "hp1"
+            updates[target_hp_key] = max(0, data[target_hp_key] - dmg)
+            st.balloons()
+        
+        elif selected_card.type == "heal":
+            my_hp_key = "hp1" if me == "p1" else "hp2"
+            updates[my_hp_key] = min(100, data[my_hp_key] + selected_card.power)
+            st.snow()
             
-            update_db(updates)
-            st.rerun()
+        elif selected_card.type == "status":
+            s_name, s_turn = selected_card.status_effect
+            updates[f"{opp}_status"] = {s_name: s_turn}
+
+        # 2. 消費処理（固有技か手札か）
+        if "固有" in selected_card.name:
+            new_used = used_innate + [selected_card.name]
+            if len(new_used) >= 3:
+                updates[f"{me}_bonus"] = bonus + 10
+                updates[f"{me}_used_innate"] = []
+                st.info("★覚醒！攻撃ボーナス+10！")
+            else:
+                updates[f"{me}_used_innate"] = new_used
+        else:
+            # 手札から名前を削除
+            st.session_state.my_hand.remove(selected_card.name)
+        
+        # 3. データベースへ送信
+        update_db(updates)
+        st.success(f"{selected_card.name} を発動しました！")
+        time.sleep(1)
+        st.rerun()
 else:
     st.info("相手のターンを待機中...")
     time.sleep(3)
@@ -181,3 +209,4 @@ if st.sidebar.button("♻️ フルリセット"):
     })
     st.session_state.my_hand = []
     st.rerun()
+
