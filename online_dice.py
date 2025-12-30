@@ -41,6 +41,18 @@ def calculate_damage(dice):
 # --- ゲーム画面 ---
 data = get_game_data()
 role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"])
+# --- リセットボタン（サイドバーに追加） ---
+if st.sidebar.button("♻️ ゲームを最初から（HPリセット）"):
+    update_game({
+        "hp1": 150,
+        "hp2": 150,
+        "turn": "P1"
+    })
+    st.session_state.rolls_left = 3
+    st.session_state.keeps = [False] * 5
+    st.success("HPを150にリセットしました！")
+    time.sleep(1)
+    st.rerun()
 my_id = "P1" if role == "Player 1" else "P2"
 enemy_id = "P2" if role == "Player 1" else "P1"
 
@@ -102,3 +114,4 @@ else:
     st.info("相手がダイスを振っています...")
     time.sleep(3) # 3秒おきにデータベースを確認
     st.rerun()
+
