@@ -197,7 +197,7 @@ for p_num in [1, 2]:
         st.write(f"HP / 100") # ここを MAX_HP に
         
         # 割合計算：(現在のHP / MAX_HP) * 100
-        hp_percent = max(0, min(100, (hp / MAX_HP) * 100)) 
+        hp_percent = max(0, min(100, (hp / 100) * 100)) 
         
         st.markdown(f"""
             <div class='hp-bar-container'>
@@ -447,6 +447,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
