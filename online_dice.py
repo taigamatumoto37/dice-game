@@ -116,8 +116,8 @@ INNATE_DECK = [
     Card("固有:生命の共鳴", "heal", 25, lambda d: len(set([x for x in d if d.count(x) >= 2])) >= 2, "2ペア (2組のペア)"),
     Card("固有:等位の福音", "heal", 40, lambda d: len(set(d)) == 2 and any(d.count(x) == 3 for x in set(d)), "フルハウス (3枚+2枚)"),
     Card("固有:轟力・大山波", "attack", 35, lambda d: sum(d) >= 22, "合計22以上 (高出目)"),
-    Card("固有:毒蛇の咆哮", "attack", 10, check_pair, "ペア (追加で毒付与)")
-    Card("固有:静寂・小波斬", "attack", 25, lambda d: sum(d) <= 12, "合計12以下 (低出目)")
+    Card("固有:毒蛇の咆哮", "attack", 10, check_pair, "ペア (追加で毒付与)"),
+    Card("固有:静寂・小波斬", "attack", 25, lambda d: sum(d) <= 12, "合計12以下 (低出目)"),
 ]
 
 def get_data(): return supabase.table("game_state").select("*").eq("id", 1).execute().data[0]
@@ -453,6 +453,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
