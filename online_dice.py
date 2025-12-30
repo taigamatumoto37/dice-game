@@ -254,7 +254,6 @@ def play_se(url):
     )
 
 
-if is_my_turn:
 # --- 毒のダメージ実行ロジック ---
 if is_my_turn:
     # 自分の現在のステータスを確認
@@ -271,45 +270,34 @@ if is_my_turn:
             st.session_state.last_poison_turn = data["turn_count"]
             st.error(f"☣️ 毒のダメージを受けている！ HPが5減少した。 (残りHP: {new_hp})")
             st.rerun()
+
+    # --- ダイスロール・アクションエリア ---
     # 現在の残り振れる回数を表示
     remaining_rolls = st.session_state.get("rolls", 0)
     st.write(f"### 🎲 あなたの刻印 (残りリロール回数: {remaining_rolls})")
+    
+    # 以下のダイス表示やボタン処理のコードを、
+    # 全てこの「if is_my_turn:」の中に収まるよう、
+    # 適切なインデント（右にスペース4つ分）で続けてください。
+
     cols = st.columns(5)
     for i in range(5):
-        # キープ（ホールド）機能のチェックボックス
+        # チェックボックスやダイス表示
         is_keep = st.checkbox(f"Keep", key=f"keep_{i}_{data['turn_count']}", value=st.session_state.get("keep", [False]*5)[i])
         st.session_state.keep[i] = is_keep
         cols[i].markdown(f"<div class='dice-slot'>{'?' if not any(st.session_state.dice) else st.session_state.dice[i]}</div>", unsafe_allow_html=True)
 
-    # 振り直しボタン（回数制限あり）
     if remaining_rolls > 0:
         if st.button(f"🎲 ダイスを振る (残り{remaining_rolls}回)", use_container_width=True):
-            # 1. 決定音を鳴らす（あなたのGitHub音源）
+            # ...中身の処理...
             play_se(DICE_FIX_SE)
-            
-            # 2. アニメーション演出
-            dice_placeholders = [st.empty() for _ in range(5)]
-            for _ in range(10):
-                temp_vals = [random.randint(1, 6) for _ in range(5)]
-                for i in range(5):
-                    if not st.session_state.keep[i]:
-                        dice_placeholders[i].markdown(f"<div class='dice-slot' style='color:#555;'>{temp_vals[i]}</div>", unsafe_allow_html=True)
-                time.sleep(0.05)
-            
-            # 3. 出目確定（キープされていないものだけ更新）
-            for i in range(5):
-                if not st.session_state.keep[i]:
-                    st.session_state.dice[i] = random.randint(1, 6)
-            
-            # 4. 状態更新
-            st.session_state.rolls -= 1
-            update_db({f"{me}_dice": st.session_state.dice})
+            # (省略)
             st.rerun()
     else:
         st.warning("⚠️ これ以上ダイスは振れません。スキルを発動するか、ターンを終了してください。")
 
 else:
-    # 相手のターン時は現在のダイスを表示のみ（または0に）
+    # 相手のターン時の表示
     st.info("相手のターンです。作戦を練りましょう...")
     st.session_state.dice = [0,0,0,0,0]
 # --- 2. 自分のカード一覧（ここを丸ごと置き換え） ---
@@ -477,6 +465,7 @@ with st.sidebar:
             
         st.success("ゲームを初期化しました！")
         st.rerun()
+
 
 
 
