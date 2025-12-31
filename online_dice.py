@@ -346,6 +346,22 @@ if is_my_turn:
             update_db({f"{me}_dice": st.session_state.dice})
             st.rerun()
 sc = st.columns(3)
+# --- スキル表示 ---
+st.write(f"### ⚔️ PLAYER {my_id} のスキル")
+
+my_hand_from_db = list(data.get(f"{me}_hand", []))
+my_used_innate = list(data.get(f"{me}_used_innate", []))
+
+# ★ pool を必ず定義する
+pool = [c for c in INNATE_DECK if c.name not in my_used_innate]
+for h_name in my_hand_from_db:
+    if h_name in CARD_DB:
+        pool.append(CARD_DB[h_name])
+
+sc = st.columns(3)
+for idx, card in enumerate(pool):
+    ...
+
 for idx, card in enumerate(pool):
     is_ready = card.condition_func(st.session_state.dice) if (is_my_turn and any(st.session_state.dice)) else False
     is_innate = "固有" in card.name
@@ -409,6 +425,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
