@@ -99,7 +99,7 @@ def get_data(): return supabase.table("game_state").select("*").eq("id", 1).exec
 def update_db(u): 
     try: supabase.table("game_state").update(u).eq("id", 1).execute()
     except: pass
-
+#CSS--------
 st.markdown("""
 <style>
 .stApp {
@@ -370,6 +370,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
