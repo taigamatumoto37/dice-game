@@ -49,24 +49,47 @@ def get_data():
 
 def update_db(data):
     supabase.table("game_state").update(data).eq("id", 1).execute()
+def initial_hand():
+    return [c.name for c in INNATE_DECK]
 
+# =============================
 # =============================
 # カード定義
 # =============================
+
 class Card:
     def __init__(self, name, ctype, power, cond, text,
                  guard_mode=None, reflect_ratio=0.0):
         self.name = name
-        self.type = ctype
+        self.type = ctype        # attack / heal / guard
         self.power = power
-        self.cond = cond
+        self.cond = cond        # 発動条件（dice -> bool）
         self.text = text
-        self.guard_mode = guard_mode
+        self.guard_mode = guard_mode   # reduce / reflect / hybrid
         self.reflect_ratio = reflect_ratio
 
-def pair(d): return any(d.count(x) >= 2 for x in set(d))
-def three(d): return any(d.count(x) >= 3 for x in set(d))
-def yahtzee(d): return len(set(d)) == 1
+
+# =============================
+# ダイス判定関数
+# =============================
+
+def check_pair(d):
+    return any(d.count(x) >= 2 for x in set(d))
+
+def check_three(d):
+    return any(d.count(x) >= 3 for x in set(d))
+
+def check_yahtzee(d):
+    return len(set(d)) == 1
+
+def check_straight(d):
+    s = sorted(set(d))
+    return s == list(range(min(s), min(s) + 5))
+
+
+# =============================
+# カードDB
+# =============================
 
 CARD_DB = {
     # --- 攻撃 ---
@@ -74,43 +97,52 @@ CARD_DB = {
     "トライ・ブラスト": Card("トライ・ブラスト","attack",20,check_three,"スリーカード"),
     "クアッド・ボルテックス": Card(
         "クアッド・ボルテックス","attack",35,
-        lambda d: any(d.count(x) >= 4 for x in set(d)),"フォーカード"
+        lambda d: any(d.count(x) >= 4 for x in set(d)),
+        "フォーカード"
     ),
     "五行封印斬": Card("五行封印斬","attack",60,check_yahtzee,"ヤッツィー"),
     "スモール・エッジ": Card(
         "スモール・エッジ","attack",25,
-        lambda d: len(set(d)) >= 3,"3種類以上の出目"
+        lambda d: len(set(d)) >= 3,
+        "3種類以上の出目"
     ),
     "スカイ・ストライク": Card(
         "スカイ・ストライク","attack",35,
-        lambda d: len(set(d)) >= 4,"4種類以上の出目"
+        lambda d: len(set(d)) >= 4,
+        "4種類以上の出目"
     ),
     "フルハウス・バスター": Card(
         "フルハウス・バスター","attack",40,
-        lambda d: len(set(d)) <= 3,"出目が3種類以下"
+        lambda d: len(set(d)) <= 3,
+        "出目が3種類以下"
     ),
     "偶数の審判": Card(
         "偶数の審判","attack",30,
-        lambda d: any(x % 2 == 0 for x in d),"偶数が1つでもある"
+        lambda d: any(x % 2 == 0 for x in d),
+        "偶数が1つでもある"
     ),
     "奇数の洗礼": Card(
         "奇数の洗礼","attack",30,
-        lambda d: any(x % 2 != 0 for x in d),"奇数が1つでもある"
+        lambda d: any(x % 2 != 0 for x in d),
+        "奇数が1つでもある"
     ),
     "ハイ・ローラー": Card(
         "ハイ・ローラー","attack",35,
-        lambda d: sum(d) >= 18,"合計18以上"
+        lambda d: sum(d) >= 18,
+        "合計18以上"
     ),
     "ロー・ローラー": Card(
         "ロー・ローラー","attack",35,
-        lambda d: sum(d) <= 15,"合計15以下"
+        lambda d: sum(d) <= 15,
+        "合計15以下"
     ),
 
     # --- 回復 ---
     "慈悲 of 祝福": Card("慈悲 of 祝福","heal",20,check_pair,"ペア"),
     "聖なる祈り": Card(
         "聖なる祈り","heal",30,
-        lambda d: any(x in d for x in [1,6]),"1か6がある"
+        lambda d: any(x in d for x in (1, 6)),
+        "1か6がある"
     ),
     "生命の輝き": Card("生命の輝き","heal",45,check_three,"スリーカード"),
     "再生の福音": Card("再生の福音","heal",80,check_yahtzee,"ヤッツィー"),
@@ -119,10 +151,11 @@ CARD_DB = {
     "癒しの波動": Card("癒しの波動","heal",25,check_pair,"ペア"),
     "エナジー・ドレイン": Card(
         "エナジー・ドレイン","heal",45,
-        lambda d: sum(d) >= 20,"合計20以上"
+        lambda d: sum(d) >= 20,
+        "合計20以上"
     ),
 
-    # --- 防御（重要） ---
+    # --- 防御 ---
     "アイアン・ウォール": Card(
         "アイアン・ウォール","guard",15,
         lambda d: True,"15軽減",
@@ -155,6 +188,11 @@ CARD_DB = {
     ),
 }
 
+
+# =============================
+# 固有デッキ
+# =============================
+
 INNATE_DECK = [
     Card("固有:トリニティ","attack",20,check_three,"スリーカード"),
     Card("固有:五連光破斬","attack",30,check_straight,"ストレート"),
@@ -162,7 +200,7 @@ INNATE_DECK = [
     Card("固有:双撃の構え","attack",15,check_pair,"ペア"),
     Card(
         "固有:生命の共鳴","heal",25,
-        lambda d: len(set([x for x in d if d.count(x) >= 2])) >= 2,
+        lambda d: len({x for x in d if d.count(x) >= 2}) >= 2,
         "2ペア"
     ),
     Card(
@@ -174,11 +212,20 @@ INNATE_DECK = [
     Card("固有:静寂・小波斬","attack",25,lambda d: sum(d) <= 12,"合計12以下"),
 ]
 
-
 # =============================
 # メイン
 # =============================
 data = get_data()
+# =============================
+# 初期手札配布（1回だけ）
+# =============================
+if not data.get("p1_hand") and not data.get("p2_hand"):
+    update_db({
+        "p1_hand": initial_hand(),
+        "p2_hand": initial_hand()
+    })
+    st.rerun()
+
 role = st.sidebar.radio("役割",["Player 1","Player 2"])
 me, opp, my_id, opp_id = ("p1","p2",1,2) if role=="Player 1" else ("p2","p1",2,1)
 
@@ -209,17 +256,20 @@ if data["hp1"] <= 0 or data["hp2"] <= 0:
     st.markdown(
         f"## {'FULL COUNTER WIN!' if counter else 'GAME OVER'}\n### 🏆 {winner}"
     )
-    if st.button("リセット"):
-        update_db({
-            "hp1":100,"hp2":100,
-            "pending_damage":0,
-            "phase":"ATK",
-            "turn":"P1",
-            "turn_count":0,
-            "counter_finish":False
-        })
-        st.rerun()
-    st.stop()
+   if st.button("リセット"):
+    update_db({
+        "hp1": 100,
+        "hp2": 100,
+        "pending_damage": 0,
+        "phase": "ATK",
+        "turn": "P1",
+        "turn_count": 0,
+        "counter_finish": False,
+        "p1_hand": initial_hand(),
+        "p2_hand": initial_hand(),
+    })
+    st.rerun()
+
 
 # =============================
 # フェーズ管理
@@ -332,5 +382,6 @@ if is_my_turn:
                     })
 
                 st.rerun()
+
 
 
