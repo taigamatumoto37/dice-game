@@ -103,77 +103,91 @@ def update_db(u):
 st.markdown("""
 <style>
 .stApp {
-    background-color: #0E1117;
-    color: white;
+    background: radial-gradient(circle at top, #0b0f1a 0%, #05070d 60%, #02030a 100%);
+    color: #e6f1ff;
+    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
 }
 
 .innate-card {
-    border: 2px solid #FFD700 !important;
-    background: linear-gradient(145deg, #1A1C23, #2A2D35) !important;
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4), inset 0 0 6px rgba(255, 215, 0, 0.2);
+    border: 2px solid transparent !important;
+    background:
+        linear-gradient(#0b1020, #0b1020) padding-box,
+        linear-gradient(135deg, #ffd700, #ff8c00, #ffd700) border-box !important;
+    border-radius: 14px;
+    box-shadow: 0 0 25px rgba(255, 200, 0, 0.45);
 }
 
 .hp-bar-container {
-    background: #333;
-    height: 10px;
-    border-radius: 5px;
-    margin-top: 5px;
+    background: linear-gradient(180deg, #111, #1a1a1a);
+    height: 12px;
+    border-radius: 999px;
+    margin-top: 6px;
     overflow: hidden;
 }
 
 .hp-bar-fill {
-    background: linear-gradient(90deg, #00FFAA, #00FFD5);
+    background: linear-gradient(90deg, #00ffa6, #00c8ff, #7cff00);
     height: 100%;
-    border-radius: 5px;
-    transition: width 0.5s ease;
-    box-shadow: 0 0 8px rgba(0, 255, 200, 0.6);
+    border-radius: 999px;
+    transition: width 0.35s ease;
+    filter: drop-shadow(0 0 6px rgba(0, 255, 200, 0.7));
 }
 
 .dice-slot {
-    background: rgba(0, 0, 0, 0.55);
-    border: 2px solid #00FFFF;
-    border-radius: 10px;
-    height: 80px;
+    background: linear-gradient(145deg, rgba(10,15,35,0.9), rgba(0,0,0,0.9));
+    border: 2px solid transparent;
+    border-radius: 16px;
+    height: 90px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 35px;
-    font-weight: bold;
-    color: #00FFFF;
-    box-shadow: 0 0 10px rgba(0, 255, 255, 0.4), inset 0 0 8px rgba(0, 0, 0, 0.6);
+    font-size: 38px;
+    font-weight: 900;
+    color: #6cfaff;
+    box-shadow:
+        inset 0 0 12px rgba(0, 255, 255, 0.25),
+        0 0 18px rgba(0, 255, 255, 0.45);
 }
 
 .opp-dice {
-    border-color: #FF4B4B;
-    color: #FF4B4B;
-    height: 50px;
-    font-size: 20px;
-    opacity: 0.7;
+    background: rgba(40, 0, 0, 0.6);
+    border-color: #ff3b3b;
+    color: #ff6a6a;
+    height: 54px;
+    font-size: 22px;
+    box-shadow: 0 0 10px rgba(255, 60, 60, 0.6);
 }
 
 .skill-card {
-    border: 1px solid #FF5555;
-    border-radius: 10px;
-    padding: 15px;
-    background: linear-gradient(145deg, #1A1C23, #141722);
-    margin-bottom: 10px;
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.6);
+    border-radius: 16px;
+    padding: 16px;
+    background:
+        linear-gradient(160deg, rgba(20,25,55,0.9), rgba(10,12,25,0.95));
+    margin-bottom: 14px;
+    box-shadow:
+        0 10px 30px rgba(0,0,0,0.75),
+        inset 0 0 10px rgba(120, 180, 255, 0.08);
 }
 
 div.stButton > button {
-    background-color: #FF5555 !important;
-    color: white !important;
+    background: linear-gradient(135deg, #ff3b3b, #ff7a18) !important;
+    color: #ffffff !important;
     width: 100% !important;
-    border-radius: 6px !important;
-    font-weight: bold !important;
-    letter-spacing: 0.5px;
+    border-radius: 10px !important;
+    font-weight: 900 !important;
+    letter-spacing: 1px;
     border: none !important;
-    box-shadow: 0 4px 12px rgba(255, 85, 85, 0.5);
+    box-shadow:
+        0 6px 18px rgba(255, 80, 80, 0.7),
+        inset 0 0 6px rgba(255,255,255,0.25);
 }
 
 div.stButton > button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 85, 85, 0.8);
+    transform: scale(1.03);
+    filter: brightness(1.15);
+    box-shadow:
+        0 10px 28px rgba(255, 100, 100, 0.95),
+        inset 0 0 8px rgba(255,255,255,0.35);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -370,6 +384,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
