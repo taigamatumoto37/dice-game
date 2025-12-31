@@ -256,8 +256,10 @@ if not is_my_turn and phase == "DEF":
 
             # ★FIX 明確なガード分岐
             if card.guard_mode == "reflect":
-    dmg = int(pending_damage * card.reflect_ratio)
-    hp_opp = max(0, data[f"hp{opp_id}"] - dmg)
+                dmg = int(pending_damage * card.reflect_ratio)
+                upd[f"hp{opp_id}"] = max(0, data[f"hp{opp_id}"] - dmg)
+                upd["pending_damage"] = 0
+
 
 elif card.guard_mode == "hybrid":
     reflect = int(pending_damage * card.reflect_ratio)
@@ -329,3 +331,4 @@ if is_my_turn:
                         "turn_count":data["turn_count"]+1
                     })
                 st.rerun()
+
