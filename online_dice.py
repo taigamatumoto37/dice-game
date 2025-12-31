@@ -189,6 +189,45 @@ div.stButton > button:hover {
         0 10px 28px rgba(255, 100, 100, 0.95),
         inset 0 0 8px rgba(255,255,255,0.35);
 }
+@keyframes sparkle {
+    0%   { box-shadow: 0 0 6px rgba(255,255,255,0.2), 0 0 12px rgba(0,200,255,0.2); }
+    50%  { box-shadow: 0 0 14px rgba(255,255,255,0.9), 0 0 28px rgba(0,200,255,0.9); }
+    100% { box-shadow: 0 0 6px rgba(255,255,255,0.2), 0 0 12px rgba(0,200,255,0.2); }
+}
+
+@keyframes shine {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+.skill-card.active {
+    position: relative;
+    border: 2px solid transparent;
+    background:
+        linear-gradient(#0b1020, #0b1020) padding-box,
+        linear-gradient(
+            120deg,
+            #00faff,
+            #7cff00,
+            #ffd700,
+            #00faff
+        ) border-box;
+    background-size: 300% 300%;
+    animation:
+        sparkle 1.4s infinite ease-in-out,
+        shine 2.5s linear infinite;
+}
+
+.skill-card.active::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 20px;
+    background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%);
+    opacity: 0.6;
+    filter: blur(10px);
+    pointer-events: none;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -384,6 +423,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
