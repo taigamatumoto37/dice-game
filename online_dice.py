@@ -53,6 +53,14 @@ def check_straight(d):
     s = sorted(list(set(d)))
     return any(s[i:i+5] == list(range(s[i], s[i]+5)) for i in range(len(s)-4))
 def check_yahtzee(d): return len(set(d)) == 1
+def card_type_label(card: Card):
+    if card.type == "attack":
+        return f"<span style='color:#ff5555;font-weight:900;'>⚔ 攻撃 {card.power}</span>"
+    if card.type == "heal":
+        return f"<span style='color:#00ff99;font-weight:900;'>✚ 回復 {card.power}</span>"
+    if card.type == "guard":
+        return f"<span style='color:#55aaff;font-weight:900;'>🛡 防御</span>"
+    return ""
 
 CARD_DB = {
     "ジェミニ・ダガー": Card("ジェミニ・ダガー", "attack", 12, check_pair, "ペア"),
@@ -337,36 +345,55 @@ if is_my_turn:
             st.session_state.rolls -= 1
             update_db({f"{me}_dice": st.session_state.dice})
             st.rerun()
-
-# --- スキル表示 ---
-st.write(f"### ⚔️ PLAYER {my_id} のスキル")
-my_hand_from_db = list(data.get(f"{me}_hand", []))
-my_used_innate = list(data.get(f"{me}_used_innate", []))
-pool = [c for c in INNATE_DECK if c.name not in my_used_innate]
-for h_name in my_hand_from_db:
-    if h_name in CARD_DB: pool.append(CARD_DB[h_name])
-
 sc = st.columns(3)
 for idx, card in enumerate(pool):
     is_ready = card.condition_func(st.session_state.dice) if (is_my_turn and any(st.session_state.dice)) else False
     is_innate = "固有" in card.name
-    type_color = "#FF5555" if card.type == "attack" else ("#00FFAA" if card.type == "heal" else "#5555FF")
-    
+
+    cls = "skill-card"
+    if is_ready:
+        cls += " active"
+    if card.type == "heal":
+        cls += " heal"
+
+    if card.type == "attack":
+        type_label = f"<span style='color:#ff5555;font-weight:900;'>⚔ 攻撃 {card.power}</span>"
+    elif card.type == "heal":
+        type_label = f"<span style='color:#00ff99;font-weight:900;'>✚ 回復 {card.power}</span>"
+    else:
+        type_label = "<span style='color:#55aaff;font-weight:900;'>🛡 防御</span>"
+
     with sc[idx % 3]:
-        st.markdown(f"<div class='skill-card' style='border-color: {type_color if is_ready else '#555555'};'><b>{card.name}</b><br><small>{card.power} | {card.cond_text}</small></div>", unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class="{cls}">
+                <div style="font-size:18px;font-weight:900;">{card.name}</div>
+                <div style="margin-top:6px;">{type_label}</div>
+                <div style="opacity:0.75;margin-top:4px;">条件：{card.cond_text}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
         if is_my_turn and is_ready and card.type != "guard":
             if st.button("発動", key=f"atk_{idx}"):
                 play_se(SE_URL)
                 upd = {}
+
                 if card.type == "attack":
                     upd["pending_damage"], upd["phase"] = card.power, "DEF"
                 else:
-                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
+                    upd[f"hp{my_id}"] = min(100, data[f"hp{my_id}"] + card.power)
                     upd["turn"], upd["turn_count"] = f"P{opp_id}", data["turn_count"] + 1
-                
-                if is_innate: upd[f"{me}_used_innate"] = my_used_innate + [card.name]
-                else: upd[f"{me}_hand"] = [n for n in my_hand_from_db if n != card.name]
-                update_db(upd); st.rerun()
+
+                if is_innate:
+                    upd[f"{me}_used_innate"] = my_used_innate + [card.name]
+                else:
+                    upd[f"{me}_hand"] = [n for n in my_hand_from_db if n != card.name]
+
+                update_db(upd)
+                st.rerun()
+
 
 if is_my_turn and st.button("ターンを終了してドロー"):
     latest = get_data()
@@ -382,6 +409,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
