@@ -359,8 +359,6 @@ for h_name in my_hand_from_db:
         pool.append(CARD_DB[h_name])
 
 sc = st.columns(3)
-for idx, card in enumerate(pool):
-    ...
 
 for idx, card in enumerate(pool):
     is_ready = card.condition_func(st.session_state.dice) if (is_my_turn and any(st.session_state.dice)) else False
@@ -397,10 +395,12 @@ for idx, card in enumerate(pool):
                 upd = {}
 
                 if card.type == "attack":
-                    upd["pending_damage"], upd["phase"] = card.power, "DEF"
+                    upd["pending_damage"] = card.power
+                    upd["phase"] = "DEF"
                 else:
-                    upd[f"hp{my_id}"] = min(100, data[f"hp{my_id}"] + card.power)
-                    upd["turn"], upd["turn_count"] = f"P{opp_id}", data["turn_count"] + 1
+                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
+                    upd["turn"] = f"P{opp_id}"
+                    upd["turn_count"] = data["turn_count"] + 1
 
                 if is_innate:
                     upd[f"{me}_used_innate"] = my_used_innate + [card.name]
@@ -425,6 +425,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
