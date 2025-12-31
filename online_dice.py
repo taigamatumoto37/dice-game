@@ -101,46 +101,95 @@ def update_db(u):
     except: pass
 st.markdown("""
 <style>
-.skill-card.active {
-    position: relative;
-    border: 2px solid transparent;
-    background:
-        linear-gradient(#0b1020, #0b1020) padding-box,
-        linear-gradient(120deg, #00faff, #7cff00, #ffd700, #00faff) border-box;
-    background-size: 300% 300%;
-    animation: sparkle 1.4s infinite ease-in-out, shine 2.5s linear infinite;
+.stApp {
+    background: radial-gradient(circle at top, #0b0f1a 0%, #05070d 60%, #02030a 100%);
+    color: #e6f1ff;
+    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
 }
 
-.skill-card.heal {
-    border: 2px solid transparent;
+.innate-card {
+    border: 2px solid transparent !important;
     background:
         linear-gradient(#0b1020, #0b1020) padding-box,
-        linear-gradient(120deg, #00ff99, #7cffb2, #00ff99) border-box;
-    background-size: 200% 200%;
+        linear-gradient(135deg, #ffd700, #ff8c00, #ffd700) border-box !important;
+    border-radius: 14px;
+    box-shadow: 0 0 25px rgba(255, 200, 0, 0.45);
 }
 
-.skill-card.heal.active {
+.hp-bar-container {
+    background: linear-gradient(180deg, #111, #1a1a1a);
+    height: 12px;
+    border-radius: 999px;
+    margin-top: 6px;
+    overflow: hidden;
+}
+
+.hp-bar-fill {
+    background: linear-gradient(90deg, #00ffa6, #00c8ff, #7cff00);
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.35s ease;
+    filter: drop-shadow(0 0 6px rgba(0, 255, 200, 0.7));
+}
+
+.dice-slot {
+    background: linear-gradient(145deg, rgba(10,15,35,0.9), rgba(0,0,0,0.9));
     border: 2px solid transparent;
-    background:
-        linear-gradient(#0b1020, #0b1020) padding-box,
-        linear-gradient(120deg, #00ff99, #7cffb2, #b6ff00, #00ff99) border-box;
-    background-size: 300% 300%;
-    animation: healGlow 1.5s infinite ease-in-out, shine 2.5s linear infinite;
+    border-radius: 16px;
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 38px;
+    font-weight: 900;
+    color: #6cfaff;
+    box-shadow:
+        inset 0 0 12px rgba(0, 255, 255, 0.25),
+        0 0 18px rgba(0, 255, 255, 0.45);
 }
 
-.skill-card.heal.active::after {
-    content: "";
-    position: absolute;
-    inset: -6px;
-    border-radius: 20px;
-    background: radial-gradient(circle, rgba(120,255,180,0.8) 0%, transparent 70%);
-    opacity: 0.7;
-    filter: blur(12px);
-    pointer-events: none;
+.opp-dice {
+    background: rgba(40, 0, 0, 0.6);
+    border-color: #ff3b3b;
+    color: #ff6a6a;
+    height: 54px;
+    font-size: 22px;
+    box-shadow: 0 0 10px rgba(255, 60, 60, 0.6);
+}
+
+.skill-card {
+    border-radius: 16px;
+    padding: 16px;
+    background:
+        linear-gradient(160deg, rgba(20,25,55,0.9), rgba(10,12,25,0.95));
+    margin-bottom: 14px;
+    box-shadow:
+        0 10px 30px rgba(0,0,0,0.75),
+        inset 0 0 10px rgba(120, 180, 255, 0.08);
+}
+
+div.stButton > button {
+    background: linear-gradient(135deg, #ff3b3b, #ff7a18) !important;
+    color: #ffffff !important;
+    width: 100% !important;
+    border-radius: 10px !important;
+    font-weight: 900 !important;
+    letter-spacing: 1px;
+    border: none !important;
+    box-shadow:
+        0 6px 18px rgba(255, 80, 80, 0.7),
+        inset 0 0 6px rgba(255,255,255,0.25);
+}
+
+div.stButton > button:hover {
+    transform: scale(1.03);
+    filter: brightness(1.15);
+    box-shadow:
+        0 10px 28px rgba(255, 100, 100, 0.95),
+        inset 0 0 8px rgba(255,255,255,0.35);
 }
 </style>
 """, unsafe_allow_html=True)
-
 
 # --- 4. メイン処理 ---
 data = get_data()
@@ -333,6 +382,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
