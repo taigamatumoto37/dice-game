@@ -1,6 +1,5 @@
 import streamlit as st
 from supabase import create_client
-import time
 import random
 import streamlit.components.v1 as components
 
@@ -49,48 +48,34 @@ def get_data():
 
 def update_db(data):
     supabase.table("game_state").update(data).eq("id", 1).execute()
-def initial_hand():
-    return [c.name for c in INNATE_DECK]
 
 # =============================
+# カードクラス
 # =============================
-# カード定義
-# =============================
-
 class Card:
     def __init__(self, name, ctype, power, cond, text,
                  guard_mode=None, reflect_ratio=0.0):
         self.name = name
-        self.type = ctype        # attack / heal / guard
+        self.type = ctype
         self.power = power
-        self.cond = cond        # 発動条件（dice -> bool）
+        self.cond = cond
         self.text = text
-        self.guard_mode = guard_mode   # reduce / reflect / hybrid
+        self.guard_mode = guard_mode
         self.reflect_ratio = reflect_ratio
 
-
 # =============================
-# ダイス判定関数
+# ダイス条件
 # =============================
-
-def check_pair(d):
-    return any(d.count(x) >= 2 for x in set(d))
-
-def check_three(d):
-    return any(d.count(x) >= 3 for x in set(d))
-
-def check_yahtzee(d):
-    return len(set(d)) == 1
-
+def check_pair(d): return any(d.count(x) >= 2 for x in set(d))
+def check_three(d): return any(d.count(x) >= 3 for x in set(d))
+def check_yahtzee(d): return len(set(d)) == 1
 def check_straight(d):
     s = sorted(set(d))
     return s == list(range(min(s), min(s) + 5))
 
-
 # =============================
 # カードDB
 # =============================
-
 CARD_DB = {
     # --- 攻撃 ---
     "ジェミニ・ダガー": Card("ジェミニ・ダガー","attack",12,check_pair,"ペア"),
@@ -211,14 +196,17 @@ INNATE_DECK = [
     Card("固有:轟力・大山波","attack",35,lambda d: sum(d) >= 22,"合計22以上"),
     Card("固有:静寂・小波斬","attack",25,lambda d: sum(d) <= 12,"合計12以下"),
 ]
+for c in INNATE_DECK:
+    CARD_DB[c.name] = c
+
+def initial_hand():
+    return list(CARD_DB.keys())
 
 # =============================
 # メイン
 # =============================
 data = get_data()
-# =============================
-# 初期手札配布（1回だけ）
-# =============================
+
 if not data.get("p1_hand") and not data.get("p2_hand"):
     update_db({
         "p1_hand": initial_hand(),
@@ -232,55 +220,34 @@ me, opp, my_id, opp_id = ("p1","p2",1,2) if role=="Player 1" else ("p2","p1",2,1
 st.title("⚔️ YAHTZEE TACTICS ⚔️")
 
 # =============================
-# HP表示
+# HP表示（上限なし）
 # =============================
-c1, c2 = st.columns(2)
-for i, col in enumerate([c1, c2], start=1):
-    with col:
-        hp = max(0, data[f"hp{i}"])      # ★FIX 下限
-        st.write(f"### PLAYER {i}")
-        st.write(f"❤️ {hp}")
-        bar = min(100, hp)
-        st.markdown(
-            f"<div style='background:#333;height:10px'>"
-            f"<div style='background:#0fa;height:10px;width:{bar}%'></div></div>",
-            unsafe_allow_html=True
-        )
+for i in (1,2):
+    st.write(f"### PLAYER {i} ❤️ {max(0,data[f'hp{i}'])}")
 
 # =============================
-# 勝敗判定（DBフラグ使用）
-# =============================
-# =============================
-# 勝敗判定（DBフラグ使用）
+# 勝敗判定
 # =============================
 if data["hp1"] <= 0 or data["hp2"] <= 0:
-    counter = data.get("counter_finish", False)
     winner = "Player 2" if data["hp1"] <= 0 else "Player 1"
-
-    st.markdown(
-        f"## {'FULL COUNTER WIN!' if counter else 'GAME OVER'}\n### 🏆 {winner}"
-    )
-
+    title = "FULL COUNTER WIN!" if data.get("counter_finish") else "GAME OVER"
+    st.markdown(f"## {title}\n### 🏆 {winner}")
     if st.button("リセット"):
         update_db({
-            "hp1": 100,
-            "hp2": 100,
-            "pending_damage": 0,
-            "phase": "ATK",
-            "turn": "P1",
-            "turn_count": 0,
-            "counter_finish": False,
-            "p1_hand": initial_hand(),
-            "p2_hand": initial_hand(),
+            "hp1":100,"hp2":100,
+            "pending_damage":0,
+            "phase":"ATK",
+            "turn":"P1",
+            "turn_count":0,
+            "counter_finish":False,
+            "p1_hand":initial_hand(),
+            "p2_hand":initial_hand(),
         })
         st.rerun()
-
     st.stop()
 
-
-
 # =============================
-# フェーズ管理
+# フェーズ
 # =============================
 is_my_turn = data["turn"] == f"P{my_id}"
 phase = data["phase"]
@@ -291,106 +258,97 @@ pending = data["pending_damage"]
 # =============================
 if not is_my_turn and phase == "DEF":
     st.warning(f"⚠️ {pending} ダメージ")
+    my_hand = data[f"{me}_hand"]
+    opp_dice = data.get(f"{opp}_dice",[1]*5)
 
-    my_hand = data.get(f"{me}_hand", [])
-    opp_dice = data.get(f"{opp}_dice", [1]*5)
+    for name in my_hand:
+        c = CARD_DB[name]
+        if c.type=="guard" and c.cond(opp_dice):
+            if st.button(f"🛡️ {c.name}"):
+                upd = {
+                    "pending_damage":0,
+                    "phase":"ATK",
+                    "turn":f"P{my_id}",
+                    "turn_count":data["turn_count"]+1,
+                    f"{me}_hand":[n for n in my_hand if n!=name]
+                }
 
-    guards = [
-        CARD_DB[n] for n in my_hand
-        if n in CARD_DB
-        and CARD_DB[n].type == "guard"
-        and CARD_DB[n].cond(opp_dice)   # ★FIX 条件判定
-    ]
+                if c.guard_mode=="reflect":
+                    dmg=int(pending*c.reflect_ratio)
+                    upd[f"hp{opp_id}"]=max(0,data[f"hp{opp_id}"]-dmg)
 
-    for g in guards:
-        if st.button(f"🛡️ {g.name}"):
-            upd = {
-                "pending_damage": 0,
-                "phase": "ATK",
-                "turn": f"P{my_id}",
-                "turn_count": data["turn_count"] + 1,
-                f"{me}_hand": [n for n in my_hand if n != g.name]
-            }
+                elif c.guard_mode=="hybrid":
+                    reflect=int(pending*c.reflect_ratio)
+                    remain=pending-reflect
+                    upd[f"hp{opp_id}"]=max(0,data[f"hp{opp_id}"]-reflect)
+                    upd[f"hp{my_id}"]=max(0,data[f"hp{my_id}"]-remain)
 
-            # ★FIX 明確なガード分岐
-            if card.guard_mode == "reflect":
-                dmg = int(pending_damage * card.reflect_ratio)
-                upd[f"hp{opp_id}"] = max(0, data[f"hp{opp_id}"] - dmg)
-                upd["pending_damage"] = 0
+                else:
+                    dmg=max(0,pending-c.power)
+                    upd[f"hp{my_id}"]=max(0,data[f"hp{my_id}"]-dmg)
 
+                if upd.get(f"hp{opp_id}",1)<=0:
+                    upd["counter_finish"]=True
 
-elif card.guard_mode == "hybrid":
-    reflect = int(pending_damage * card.reflect_ratio)
-    reduce = pending_damage - reflect
-    hp_opp = max(0, data[f"hp{opp_id}"] - reflect)
-    hp_me  = max(0, data[f"hp{my_id}"] - reduce)
-
-else:  # reduce
-    hp_me = max(0, data[f"hp{my_id}"] - max(0, pending_damage - card.power))
-
-         
+                update_db(upd)
+                st.rerun()
 
     if st.button("そのまま受ける"):
         update_db({
-            f"hp{my_id}": max(0, data[f"hp{my_id}"] - pending),
+            f"hp{my_id}":max(0,data[f"hp{my_id}"]-pending),
             "pending_damage":0,
             "phase":"ATK",
             "turn":f"P{my_id}",
             "turn_count":data["turn_count"]+1
         })
         st.rerun()
-
     st.stop()
 
 # =============================
-# 攻撃側
+# 攻撃フェーズ
 # =============================
 if is_my_turn:
-    if st.session_state.get("last_turn") != data["turn_count"]:
-        st.session_state.dice = [random.randint(1,6) for _ in range(5)]
-        st.session_state.rolls = 2
-        st.session_state.keep = [False]*5
-        st.session_state.last_turn = data["turn_count"]
-        update_db({f"{me}_dice": st.session_state.dice})
+    if st.session_state.get("last_turn")!=data["turn_count"]:
+        st.session_state.dice=[random.randint(1,6) for _ in range(5)]
+        st.session_state.rolls=2
+        st.session_state.keep=[False]*5
+        st.session_state.last_turn=data["turn_count"]
+        update_db({f"{me}_dice":st.session_state.dice})
 
     st.write("🎲 ダイス")
-    cols = st.columns(5)
     for i in range(5):
-        st.session_state.keep[i] = st.checkbox(
-            "Keep", key=f"k_{i}_{my_id}_{data['turn_count']}",
-            value=st.session_state.keep[i]
+        st.session_state.keep[i]=st.checkbox(
+            f"Keep{i}",value=st.session_state.keep[i],
+            key=f"k{i}{my_id}{data['turn_count']}"
         )
-        cols[i].markdown(f"## {st.session_state.dice[i]}")
+        st.write(st.session_state.dice[i])
 
-    if st.session_state.rolls > 0 and st.button("振る"):
+    if st.session_state.rolls>0 and st.button("振る"):
         play_se(DICE_ROLL_SE)
-        st.session_state.dice = [
+        st.session_state.dice=[
             v if st.session_state.keep[i] else random.randint(1,6)
-            for i, v in enumerate(st.session_state.dice)
+            for i,v in enumerate(st.session_state.dice)
         ]
-        st.session_state.rolls -= 1
-        update_db({f"{me}_dice": st.session_state.dice})
+        st.session_state.rolls-=1
+        update_db({f"{me}_dice":st.session_state.dice})
         st.rerun()
 
     st.write("⚔️ スキル")
-    for c in CARD_DB.values():
-        if c.type != "guard" and c.cond(st.session_state.dice):
+    my_hand=data[f"{me}_hand"]
+    for name in my_hand:
+        c=CARD_DB[name]
+        if c.type!="guard" and c.cond(st.session_state.dice):
             if st.button(c.name):
                 play_se(SE_URL)
-                if c.type == "attack":
+                if c.type=="attack":
                     update_db({
-                        "pending_damage": data.get("pending_damage",0) + c.power,  # ★FIX
+                        "pending_damage":data["pending_damage"]+c.power,
                         "phase":"DEF"
                     })
                 else:
                     update_db({
-                        f"hp{my_id}": data[f"hp{my_id}"] + c.power,
-                        "turn": f"P{opp_id}",
-                        "turn_count": data["turn_count"] + 1
+                        f"hp{my_id}":data[f"hp{my_id}"]+c.power,
+                        "turn":f"P{opp_id}",
+                        "turn_count":data["turn_count"]+1
                     })
-
                 st.rerun()
-
-
-
-
