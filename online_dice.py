@@ -235,7 +235,11 @@ div.stButton > button:hover {
         linear-gradient(120deg, #00FF99, #7CFFB2, #00FF99) border-box;
     background-size: 200% 200%;
 }
-
+@keyframes healGlow {
+    0%   { box-shadow: 0 0 6px rgba(0,255,150,0.2), 0 0 12px rgba(0,255,150,0.2); }
+    50%  { box-shadow: 0 0 14px rgba(0,255,150,0.9), 0 0 28px rgba(0,255,150,0.9); }
+    100% { box-shadow: 0 0 6px rgba(0,255,150,0.2), 0 0 12px rgba(0,255,150,0.2); }
+}
 .skill-card.heal.active {
     animation: healGlow 1.5s infinite ease-in-out;
 }
@@ -434,6 +438,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
