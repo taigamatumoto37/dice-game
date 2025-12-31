@@ -250,25 +250,33 @@ for i, col in enumerate([c1, c2], start=1):
 # =============================
 # 勝敗判定（DBフラグ使用）
 # =============================
+# =============================
+# 勝敗判定（DBフラグ使用）
+# =============================
 if data["hp1"] <= 0 or data["hp2"] <= 0:
-    counter = data.get("counter_finish", False)   # ★FIX
+    counter = data.get("counter_finish", False)
     winner = "Player 2" if data["hp1"] <= 0 else "Player 1"
+
     st.markdown(
         f"## {'FULL COUNTER WIN!' if counter else 'GAME OVER'}\n### 🏆 {winner}"
     )
-   if st.button("リセット"):
-    update_db({
-        "hp1": 100,
-        "hp2": 100,
-        "pending_damage": 0,
-        "phase": "ATK",
-        "turn": "P1",
-        "turn_count": 0,
-        "counter_finish": False,
-        "p1_hand": initial_hand(),
-        "p2_hand": initial_hand(),
-    })
-    st.rerun()
+
+    if st.button("リセット"):
+        update_db({
+            "hp1": 100,
+            "hp2": 100,
+            "pending_damage": 0,
+            "phase": "ATK",
+            "turn": "P1",
+            "turn_count": 0,
+            "counter_finish": False,
+            "p1_hand": initial_hand(),
+            "p2_hand": initial_hand(),
+        })
+        st.rerun()
+
+    st.stop()
+
 
 
 # =============================
@@ -382,6 +390,7 @@ if is_my_turn:
                     })
 
                 st.rerun()
+
 
 
 
