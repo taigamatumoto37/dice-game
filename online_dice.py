@@ -326,9 +326,11 @@ if is_my_turn:
                     })
                 else:
                     update_db({
-                        f"hp{my_id}": data[f"hp{my_id}"] + c.power
-                        "turn":f"P{opp_id}",
-                        "turn_count":data["turn_count"]+1
+                        f"hp{my_id}": data[f"hp{my_id}"] + c.power,
+                        "turn": f"P{opp_id}",
+                        "turn_count": data["turn_count"] + 1
                     })
+
                 st.rerun()
+
 
