@@ -100,19 +100,84 @@ def update_db(u):
     try: supabase.table("game_state").update(u).eq("id", 1).execute()
     except: pass
 
-# --- 3. CSS ---
 st.markdown("""
 <style>
-    .innate-card { border: 2px solid #FFD700 !important; background: linear-gradient(145deg, #1A1C23, #2A2D35) !important; box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
-    .stApp { background-color: #0E1117; color: white; }
-    .hp-bar-container { background: #333; height: 10px; border-radius: 5px; margin-top: 5px; }
-    .hp-bar-fill { background: #00FFAA; height: 100%; border-radius: 5px; transition: width 0.5s; }
-    .dice-slot { background: rgba(0, 0, 0, 0.5); border: 2px solid #00FFFF; border-radius: 10px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 35px; color: #00FFFF; }
-    .opp-dice { border-color: #FF4B4B; color: #FF4B4B; height: 50px; font-size: 20px; opacity: 0.7; }
-    div.stButton > button { background-color: #FF5555 !important; color: white !important; width: 100% !important; border-radius: 5px !important; font-weight: bold !important; }
-    .skill-card { border: 1px solid #FF5555; border-radius: 10px; padding: 15px; background: #1A1C23; margin-bottom: 10px; }
+.stApp {
+    background-color: #0E1117;
+    color: white;
+}
+
+.innate-card {
+    border: 2px solid #FFD700 !important;
+    background: linear-gradient(145deg, #1A1C23, #2A2D35) !important;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4), inset 0 0 6px rgba(255, 215, 0, 0.2);
+}
+
+.hp-bar-container {
+    background: #333;
+    height: 10px;
+    border-radius: 5px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.hp-bar-fill {
+    background: linear-gradient(90deg, #00FFAA, #00FFD5);
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 8px rgba(0, 255, 200, 0.6);
+}
+
+.dice-slot {
+    background: rgba(0, 0, 0, 0.55);
+    border: 2px solid #00FFFF;
+    border-radius: 10px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 35px;
+    font-weight: bold;
+    color: #00FFFF;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.4), inset 0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+.opp-dice {
+    border-color: #FF4B4B;
+    color: #FF4B4B;
+    height: 50px;
+    font-size: 20px;
+    opacity: 0.7;
+}
+
+.skill-card {
+    border: 1px solid #FF5555;
+    border-radius: 10px;
+    padding: 15px;
+    background: linear-gradient(145deg, #1A1C23, #141722);
+    margin-bottom: 10px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.6);
+}
+
+div.stButton > button {
+    background-color: #FF5555 !important;
+    color: white !important;
+    width: 100% !important;
+    border-radius: 6px !important;
+    font-weight: bold !important;
+    letter-spacing: 0.5px;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(255, 85, 85, 0.5);
+}
+
+div.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 85, 85, 0.8);
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- 4. メイン処理 ---
 data = get_data()
@@ -305,6 +370,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
