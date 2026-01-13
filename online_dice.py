@@ -1,75 +1,75 @@
-import streamlit as st
-from supabase import create_client
-import time
-import random
-import streamlit.components.v1 as components
+輸入 たんむん たんむ
+かえ 輝緑岩 輸入 create_client
+輸入 時間
+輸入 たんむん
+輸入 ストリーライト。コ・オ・オ・オ。v1 たっかいなんきょん
 
 
 
-# 効果音再生用関数
-def play_se(url):
-    components.html(
+# 効果音再生生関数
+def よぉ〜_se(URL):
+ 成分。HTML(
         f"""
-        <script>
-            var audio = new Audio("{url}");
-            audio.volume = 0.6;
-            audio.play();
-        </script>
-        """,
-        height=0,
+ <サノオウ>
+ var audio = 必聴オーディオ(「{URL}」);
+ オーディオ。音量 = 0。6;
+ オーディオ。遊り();
+ </ガツガツ>
+ 「」、
+ 高す=0、
     )
 
-SE_URL = "https://github.com/taigamatumoto37/dice-game/raw/5c9c1c88d3d308d48494ed197ece6eb88a5ea8d3/%E6%B1%BA%E5%AE%9A%E3%83%9C%E3%82%BF%E3%83%B3%E3%82%92%E6%8A%BC%E3%81%998.mp3"
-bgm_url = "https://github.com/taigamatumoto37/dice-game/raw/main/001_%E3%80%90%E7%9D%A1%E7%9C%A030%E5%88%86%E5%89%8D%E7%94%A8%E3%80%91%E7%86%9F%E7%9D%A1%E3%81%A7%E3%81%8D%E3%82%8B%E7%9D%A1%E7%9C%A0%E7%94%A8BGM%20Smooth%20Jazz%E3%80%90%E5%BA%83%E5%91%8A%E3%81%AA%E3%81%97%E3%80%91Deep%20Sleep%2C%20Relaxing%2C%20Healing%2C%20Sleep%20Music%2C%2030%20miniutes.mp3"
-DICE_ROLL_SE = "https://github.com/taigamatumoto37/dice-game/raw/5c9c1c88d3d308d48494ed197ece6eb88a5ea8d3/%E6%B1%BA%E5%AE%9A%E3%83%9C%E3%82%BF%E3%83%B3%E3%82%92%E6%8A%BC%E3%81%998.mp3"
-components.html(
-    f"""
-    <audio id="bgm" src="{bgm_url}" loop></audio>
-    <script>
-        window.parent.document.body.addEventListener('click', function() {{
-            var audio = document.getElementById('bgm');
-            if (audio.paused) {{
-                audio.play().catch(e => console.log("BGM Playback failed:", e));
-            }}
-        }}, {{ once: true }});
-    </script>
-    """,
-    height=0,
+SE_URL = "https://github。com/taigamatumoto37/dice-game/raw/5c9c1c88d3d308d48494ed197ece6eb88a5ea8d3/%E6%B1%BA%E5%AE%9A%E3%83%9C%E3%82%BF%E3%83%B3%E3%82%92%E6%8A%BC%E3%81%998。mp3"
+bgm_url = "https://github。com/taigamatumoto37/dice-game/raw/main/001_%E3%80%90%E7%9D%A1%E7%9C%A030%E5%88%86%E5%89%8D%E7%94%A8%E3%80%91%E7%86%9F%E7%9D%A1%E3%81%A7%E3%81%8D%E3%82%8B%E7%9D%A1%E7%9C%A0%E7%94%A8BGM%20Smooth%20Jazz%E3%80%90%E5%BA%83%E5%91%8A%E3%81%AA%E3%81%97%E3%80%91Deep%20Sleep%2C%20Relaxing%2C%20Healing%2C%20Sleep%20Music%2C%2030%20miniutes。mp3"
+DICE_ROLL_SE = "https://github。com/taigamatumoto37/dice-game/raw/5c9c1c88d3d308d48494ed197ece6eb88a5ea8d3/%E6%B1%BA%E5%AE%9A%E3%83%9C%E3%82%BF%E3%83%B3%E3%82%92%E6%8A%BC%E3%81%998。mp3"
+コ・オ・オ・オ。html(
+ f"""
+ <bgmID=「bgm」 src=「{bgm_url}」 ル・></・・・>
+ <サノオウ>
+ ウィンドウ。親。文書。体。イベントリスナーを追加('click', function() {{
+ var オーディオ = 文書。getElementById(「bgm」);
+ if（オーディオ。一時停止）{{
+ オーディオ。遊ぶ(). 。キャッチ（e => コンソール。ログ(「BGM 再生的大作しちゃおう:」, 、 e）);
+ }}
+ }}, {{ 一度: 本当 }});
+ </ガツガツ>
+ 「」、
+ けつ=0、
 )
 
-# --- 1. Supabase 接続 ---
-url = st.secrets["SUPABASE_URL"]
-key = st.secrets["SUPABASE_KEY"]
-supabase = create_client(url, key)
+# --- 1。Supabase 接続 ---
+url = st。秘密[「SUPABASE_URL」]
+・・ = st。秘密[「SUPABASE_KEY」]
+supabase = create_client（url, key）
 
-# --- 2. カード定義 ---
-class Card:
-    def __init__(self, name, ctype, power, condition_func, cond_text):
-        self.name, self.type, self.power, self.condition_func, self.cond_text = name, ctype, power, condition_func, cond_text
+# --- 2。・・・・・
+ハマァァァァァ:
+ def __init__（self、name、ctype、power、condition_func、cond_text）:
+ 自己。名前、自己。タイプ、自己。力、自己。条件_func、自己。cond_text = 名前、ctype、power、condition_func、cond_text
 
-def check_pair(d): return any(d.count(x) >= 2 for x in set(d))
-def check_three(d): return any(d.count(x) >= 3 for x in set(d))
-def check_straight(d): 
-    s = sorted(list(set(d)))
-    return any(s[i:i+5] == list(range(s[i], s[i]+5)) for i in range(len(s)-4))
-def check_yahtzee(d): return len(set(d)) == 1
-def card_type_label(card: Card):
-    if card.type == "attack":
-        return f"<span style='color:#ff5555;font-weight:900;'>⚔ 攻撃 {card.power}</span>"
-    if card.type == "heal":
-        return f"<span style='color:#00ff99;font-weight:900;'>✚ 回復 {card.power}</span>"
-    if card.type == "guard":
-        return f"<span style='color:#55aaff;font-weight:900;'>🛡 防御</span>"
-    return ""
+def check_pair（d）: set（d）内の x に対してany（d。カウント（x）>= 2) みごしらえ
+def check_three（d）: set（d）内の x に対してany（d。カウント（x）>= 3) みごしらえ
+def check_straight（d）: 
+ s = ソート済み（リスト（セット（d）))
+ range（len（s）-4))内のiに対してany（s[i:i+5] == list（range（s[i], s[i]+5))を返す
+def check_yahtzee（d）: return len（set（d）) == 1
+def card_type_label（カード: カード）:
+ card。type == "attack"の場合:
+ return f"<span style='color:#ff5555;font-weight:900;'>⚔ 攻文 {card。power}</span>"
+ card。type == "heal"の場合:
+ f"<span style='color:#00ff99;font-weight:900;'>✚ を返します {card。power}</span>"
+ card。type == "guard"の場合:
+ return f"<span style='color:#55aaff;font-weight:900;'>🛡 防得</span>"
+ ""を返す
 
 CARD_DB = {
-    "ジェミニ・ダガー": Card("ジェミニ・ダガー", "attack", 12, check_pair, "ペア"),
-    "トライ・ブラスト": Card("トライ・ブラスト", "attack", 20, check_three, "スリーカード"),
-    "クアッド・ボルテックス": Card("クアッド・ボルテックス", "attack", 35, lambda d: any(d.count(x) >= 4 for x in set(d)), "フォーカード"),
-    "五行封印斬": Card("五行封印斬", "attack", 60, check_yahtzee, "ヤッツィー"),
-    "スモール・エッジ": Card("スモール・エッジ", "attack", 25, lambda d: len(set(d)) >= 3, "3種類以上の出目"),
-    "スカイ・ストライク": Card("スカイ・ストライク", "attack", 35, lambda d: len(set(d)) >= 4, "4種類以上の出目"),
-    "慈悲 of 祝福": Card("慈悲 of 祝福", "heal", 20, check_pair, "ペア"),
+ 「カード」:カード(「カード」、「攻撃」、12、check_pair、「カード」)、
+ 「アタック」:カード(「アタック」、「アタック」、20、check_three、「アタック」)、
+ 「カード」: カード(「カード」、「攻撃」、35、ラムダ d: any（d。count（x）>= 4 for x in set（d）)、「カード」、
+ "五行小小札": Card("五行小小札", "attack", 60, check_yahtzee, "yahtzee"),
+ 「攻撃」: Card(「攻撃」、「攻撃」、25、ラムダ d: len（set（d）) >= 3、「3攻撃上下金目」)、
+ 「攻撃する」: カード(「攻撃する」、「攻撃する」、35、ラムダ d: len（set（d）) >= 4、「4種類上上金目」)、
+ 「祝福の慈悲」: Card("祝福の慈悲", "heal", 20, check_pair, "ペア"),
     "聖なる祈り": Card("聖なる祈り", "heal", 30, lambda d: any(x in d for x in [1, 6]), "1か6がある"),
     "生命の輝き": Card("生命の輝き", "heal", 45, check_three, "スリーカード"),
     "再生の福音": Card("再生の福音", "heal", 80, check_yahtzee, "ヤッツィー"),
@@ -279,7 +279,9 @@ if not is_my_turn and current_phase == "DEF":
     
     cols = st.columns(len(guards) + 1)
     for i, g in enumerate(guards):
-        if cols[i].button(f"🛡️ {g.name}"):
+        if cols[i].button(
+    f"🛡️ {g.name}",
+ たん以被の場合:
             upd = {
                 "pending_damage": 0,
                 "phase": "ATK",
@@ -305,7 +307,7 @@ if not is_my_turn and current_phase == "DEF":
                     upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - (pending_dmg * 0.5))
             else:
                 # 通常のガード（軽減）
-                upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
+ upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g。power）
             
             update_db(upd)
             time.sleep(1) # 演出を見せるため
@@ -425,6 +427,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
