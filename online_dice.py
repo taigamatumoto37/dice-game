@@ -244,16 +244,14 @@ def game_main(role):
                 update_db({f"{me}_dice": st.session_state.dice})
                 st.rerun()
                 # --- データ取得 & 役割設定 ---
-data = get_data()
+                data = get_data()
 role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"], key="role_select")
 me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p1", 2, 1)
-
-# --- ターン判定 & 状態取得 ---
 is_my_turn = (data["turn"] == f"P{my_id}")
 current_phase = data.get("phase", "ATK")
 pending_dmg = data.get("pending_damage", 0)
 
-# --- 防御フェーズ処理 ---
+# --- 防御フェーズ ---
 if not is_my_turn and current_phase == "DEF":
     st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
     my_hand = data.get(f"{me}_hand", [])
@@ -264,32 +262,28 @@ if not is_my_turn and current_phase == "DEF":
         st.error("⚠️ 状態不整合：atk_player がありません")
         st.stop()
 
-    # --- ガードカードがある場合 ---
     if guards:
-        cols = st.columns(len(guards) + 1)
+        cols = st.columns(len(guards)+1)
         for i, g in enumerate(guards):
             if cols[i].button(f"🛡️ {g.name}", key=f"guard_{i}_{g.name}"):
                 upd = {
                     "pending_damage": 0,
                     "phase": "ATK",
-                    "turn": atk,              # 攻撃者にターン戻す
+                    "turn": atk,
                     "atk_player": None,
                     "turn_count": data["turn_count"] + 1,
                     f"{me}_hand": [n for n in my_hand if n != g.name]
                 }
-                # 反射 or 軽減
+                # 反射処理
                 if "反射" in g.cond_text or "返し" in g.cond_text:
                     reflect_dmg = int(pending_dmg * g.power)
                     upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - reflect_dmg
-                    if upd[f"hp{opp_id}"] <= 0:
-                        st.session_state.counter_finish = True
                 else:
                     upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
 
                 update_db(upd)
-                st.rerun()
+                st.rerun()  # ボタン押した時だけ更新
 
-        # そのまま受けるボタン
         if cols[-1].button("そのまま受ける"):
             update_db({
                 f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
@@ -300,8 +294,6 @@ if not is_my_turn and current_phase == "DEF":
                 "turn_count": data["turn_count"] + 1
             })
             st.rerun()
-
-    # --- ガードカードがない場合 ---
     else:
         if st.button("そのまま受ける"):
             update_db({
@@ -314,7 +306,9 @@ if not is_my_turn and current_phase == "DEF":
             })
             st.rerun()
 
-    st.stop()  # 防御ターン処理が終わったらここで処理停止
+    st.stop()  # 防御ターン終了後はここで止める
+
+
 
 # --- 攻撃側処理 ---
 if is_my_turn:
@@ -518,6 +512,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
