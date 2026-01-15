@@ -203,50 +203,38 @@ import streamlit as st
 # ... (他のインポートやCardクラスの定義、CARD_DB、CSSなどはそのまま)
 
 # --- 4. メイン処理 (関数の外) ---
-# 役割選択を一番上に置く（これでPlayer 2への切り替えが安定します）
 role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"], key="role_select")
 
-# --- 定期更新エリアを定義 ---
 @st.fragment(run_every="3s")
 def game_main(role):
     data = get_data()
+
     if role == "Player 1":
-    me, opp, my_id, opp_id = "p1", "p2", 1, 2
-else:
-    me, opp, my_id, opp_id = "p2", "p1", 2, 1
+        me, opp, my_id, opp_id = "p1", "p2", 1, 2
+    else:
+        me, opp, my_id, opp_id = "p2", "p1", 2, 1
 
     is_my_turn = (data["turn"] == f"P{my_id}")
-    current_phase = data.get("phase", "ATK")
-    pending_dmg = data.get("pending_damage", 0)
+    phase = data.get("phase", "ATK")
 
-    # 🔽🔽🔽 ここに入れる 🔽🔽🔽
-    if (not is_my_turn) and current_phase == "DEF":
+    # ① 防御フェーズ
+    if (not is_my_turn) and phase == "DEF":
+        ...
+        st.stop()
 
-        st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
+    # ② ターン開始処理（ダイス初期化）
+    if is_my_turn:
+        if st.session_state.get("last_processed_turn") != data["turn_count"]:
+            st.session_state.dice = [random.randint(1,6) for _ in range(5)]
+            st.session_state.rolls = 2
+            st.session_state.keep = [False]*5
+            st.session_state.last_processed_turn = data["turn_count"]
+            update_db({f"{me}_dice": st.session_state.dice})
+            st.rerun()
 
-        my_hand = data.get(f"{me}_hand", [])
-        guards = [
-            CARD_DB[n]
-            for n in my_hand
-            if n in CARD_DB and CARD_DB[n].type == "guard"
-        ]
+    # ③ UI・スキル・攻撃
+    ...
 
-        atk = data.get("atk_player")
-        if atk is None:
-            st.error("⚠️ 状態不整合：atk_player がありません")
-            st.stop()
-
-        # （以下、今書いている防御処理を全部ここに）
-
-        # --- ダイスロール処理 ---
-        if is_my_turn:
-    if st.session_state.get("last_processed_turn") != data["turn_count"]:
-        st.session_state.dice = [random.randint(1, 6) for _ in range(5)]
-        st.session_state.rolls = 2
-        st.session_state.keep = [False] * 5
-        st.session_state.last_processed_turn = data["turn_count"]
-        update_db({f"{me}_dice": st.session_state.dice})
-        st.rerun()# --- ダイスロール処理 ---
 if is_my_turn:
     if st.session_state.get("last_processed_turn") != data["turn_count"]:
         st.session_state.dice = [random.randint(1, 6) for _ in range(5)]
@@ -449,6 +437,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
