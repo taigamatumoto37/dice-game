@@ -268,8 +268,7 @@ if is_my_turn:
     p1_hp = data["hp1"]
     p2_hp = data["hp2"]
     if p1_hp <= 0 or p2_hp <= 0:
-        # (中略: 元の勝敗表示コード)
-    return
+        return
 
     # 相手のダイス表示
     st.write(f"### 🛡️ 相手(P{opp_id})の刻印")
@@ -437,6 +436,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
