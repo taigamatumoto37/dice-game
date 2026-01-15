@@ -225,7 +225,7 @@ if not is_my_turn or current_phase == "DEF":
     )
 
 # --- HP表示エリア --- (ここから下は元のコードと同じ)
-    )
+
 role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"])
 me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p1", 2, 1)
 
@@ -452,6 +452,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
