@@ -234,6 +234,24 @@ def game_main(role):
 
         # （以下、今書いている防御処理を全部ここに）
 
+        # --- ダイスロール処理 ---
+if is_my_turn:
+    if st.session_state.get("last_processed_turn") != data["turn_count"]:
+        st.session_state.dice = [random.randint(1, 6) for _ in range(5)]
+        st.session_state.rolls = 2
+        st.session_state.keep = [False] * 5
+        st.session_state.last_processed_turn = data["turn_count"]
+        update_db({f"{me}_dice": st.session_state.dice})
+        st.rerun()# --- ダイスロール処理 ---
+if is_my_turn:
+    if st.session_state.get("last_processed_turn") != data["turn_count"]:
+        st.session_state.dice = [random.randint(1, 6) for _ in range(5)]
+        st.session_state.rolls = 2
+        st.session_state.keep = [False] * 5
+        st.session_state.last_processed_turn = data["turn_count"]
+        update_db({f"{me}_dice": st.session_state.dice})
+        st.rerun()
+
     
     # ここで定義するので NameError は起きません
     data = get_data()
@@ -332,15 +350,7 @@ def game_main(role):
     st.stop()
 
 
-# --- ダイスロール処理 ---
-if is_my_turn:
-    if st.session_state.get("last_processed_turn") != data["turn_count"]:
-        st.session_state.dice = [random.randint(1, 6) for _ in range(5)]
-        st.session_state.rolls = 2
-        st.session_state.keep = [False] * 5
-        st.session_state.last_processed_turn = data["turn_count"]
-        update_db({f"{me}_dice": st.session_state.dice})
-        st.rerun()
+
 
     st.write(f"### 🎲 あなたの刻印 (残りリロール回数: {st.session_state.get('rolls', 0)})")
     cols = st.columns(5)
@@ -435,6 +445,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
