@@ -230,7 +230,7 @@ def game_main(role):
             st.session_state.keep = [False]*5
             st.session_state.last_processed_turn = data["turn_count"]
             update_db({f"{me}_dice": st.session_state.dice})
-            st.rerun()
+            # st.rerun() は不要、初回読み込み時だけ
 
     # ③ UI・スキル・攻撃
     ...
@@ -512,6 +512,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
