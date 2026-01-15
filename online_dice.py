@@ -307,10 +307,8 @@ if current_phase == "DEF" and data["turn"] == f"P{my_id}":
             "atk_player": None,
             "turn_count": data["turn_count"] + 1
         })
-
         st.rerun()
-
-    st.stop()
+        st.stop()
 
 
 # --- ダイスロール処理 ---
@@ -432,6 +430,7 @@ with st.sidebar:
 if current_phase == "DEF" and data["turn"] != f"P{my_id}":
     st.info("⌛ 相手の防御選択を待っています...")
     st.stop()
+
 
 
 
