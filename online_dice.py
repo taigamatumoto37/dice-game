@@ -210,7 +210,11 @@ role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"], key="role_s
 @st.fragment(run_every="3s")
 def game_main(role):
     data = get_data()
-    me, opp, my_id, opp_id = ...
+    if role == "Player 1":
+    me, opp, my_id, opp_id = "p1", "p2", 1, 2
+else:
+    me, opp, my_id, opp_id = "p2", "p1", 2, 1
+
     is_my_turn = (data["turn"] == f"P{my_id}")
     current_phase = data.get("phase", "ATK")
     pending_dmg = data.get("pending_damage", 0)
@@ -235,7 +239,7 @@ def game_main(role):
         # （以下、今書いている防御処理を全部ここに）
 
         # --- ダイスロール処理 ---
-if is_my_turn:
+        if is_my_turn:
     if st.session_state.get("last_processed_turn") != data["turn_count"]:
         st.session_state.dice = [random.randint(1, 6) for _ in range(5)]
         st.session_state.rolls = 2
@@ -445,6 +449,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
