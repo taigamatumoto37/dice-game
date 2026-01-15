@@ -1,4 +1,4 @@
-import streamlit as st
+    import streamlit as st
 from supabase import create_client
 import time
 import random
@@ -338,13 +338,16 @@ if (not is_my_turn) and current_phase == "DEF":
                 if atk is None:
                     st.error("⚠️ 状態不整合：atk_player がありません")
                     st.stop()
+                update_db({
+                    "pending_damage": 0,
+                    "phase": "ATK",
+                    "turn": atk,
+                    "atk_player": None,
+                    "turn_count": data["turn_count"] + 1
+                })
+                st.rerun()
 
-                "turn": atk,
 
-                "atk_player": None,
-                "turn_count": data["turn_count"] + 1
-            })
-            st.rerun()
 
     # --- ガードカードが無い場合 ---
     else:
@@ -358,11 +361,15 @@ if (not is_my_turn) and current_phase == "DEF":
                     st.error("⚠️ 状態不整合：atk_player がありません")
                     st.stop()
 
-                "turn": atk,
-                "atk_player": None,
-                "turn_count": data["turn_count"] + 1
-            })
-            st.rerun()
+                update_db({
+                    "pending_damage": 0,
+                    "phase": "ATK",
+                    "turn": atk,
+                    "atk_player": None,
+                    "turn_count": data["turn_count"] + 1
+                })
+                st.rerun()
+
 
     st.stop()
 
@@ -506,6 +513,7 @@ with st.sidebar:
         })
 
         st.rerun()
+
 
 
 
