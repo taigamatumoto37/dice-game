@@ -201,6 +201,18 @@ div.stButton > button:hover {
 
 # --- 4. メイン処理 ---
 data = get_data()
+if not is_my_turn or current_phase == "DEF":
+    components.html(
+        """
+        <script>
+        setTimeout(function() {
+            window.parent.document.querySelector('section.main').scrollTo(0, 0); 
+            window.parent.location.reload();
+        }, 3000); // 3000ミリ秒（3秒）ごとにリロード
+        </script>
+        """,
+        height=0,
+    )
 role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"])
 me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p1", 2, 1)
 
@@ -427,6 +439,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
