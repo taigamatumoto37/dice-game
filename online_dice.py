@@ -88,7 +88,7 @@ CARD_DB = {
     "ナイト・シールド": Card("ナイト・シールド", "guard", 25, lambda d: True, "無条件"), # 追加
     "ホーリー・バリア": Card("ホーリー・バリア", "guard", 45, lambda d: True, "無条件"), # 追加
     "ミラー・シールド": Card("ミラー・シールド", "guard", 1.0, lambda d: True, "100%反射"),
-    "トゲトゲの盾": Card("トゲトゲの盾", "guard", 0.5, lambda d: True, "50%反射+50%軽減"),
+    "トゲトゲの盾": Card("トゲトゲの盾", "guard", 1.5, lambda d: True, "150%反射+50%軽減"),
 }
 
 
@@ -427,4 +427,5 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
