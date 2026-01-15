@@ -203,27 +203,32 @@ div.stButton > button:hover {
 data = get_data()
 
 # 1. 役割の選択と変数の定義をここで「一度だけ」行う
-# もしコードの中盤や後半に同じ radio("役割を選択"...) があったら削除してください
-role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"], key="unique_role_selector")
-me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p1", 2, 1)
+# もしコードの中盤や後半に同じ radio("役割を選択"...) があったら削除してください# --- 役割は一度だけ決める ---
+if "role" not in st.session_state:
+    st.session_state.role = None
+
+if st.session_state.role is None:
+    st.sidebar.title("役割選択")
+    st.session_state.role = st.sidebar.radio(
+        "あなたはどちら？",
+        ["Player 1", "Player 2"]
+    )
+else:
+    st.sidebar.success(f"あなた：{st.session_state.role}")
+
+role = st.session_state.role
+me, opp, my_id, opp_id = (
+    ("p1", "p2", 1, 2)
+    if role == "Player 1"
+    else ("p2", "p1", 2, 1)
+)
+
 
 # 2. 状態判定用変数を定義
 is_my_turn = (data["turn"] == f"P{my_id}")
 current_phase = data.get("phase", "ATK")
 pending_dmg = data.get("pending_damage", 0)
 
-# 3. オートリフレッシュ（自分のターンじゃない時だけ）
-if not is_my_turn or current_phase == "DEF":
-    components.html(
-        """
-        <script>
-        setTimeout(function() {
-            window.parent.location.reload();
-        }, 3000);
-        </script>
-        """,
-        height=0,
-    )
 
 # --- 以下、既存のUI表示ロジック ---
 st.title("⚔️ YAHTZEE TACTICS ⚔️")
@@ -344,8 +349,6 @@ if not is_my_turn and current_phase == "DEF":
 # --- 攻撃側の待機表示 ---
 if is_my_turn and current_phase == "DEF":
     st.info("⌛ 相手の防御選択を待っています...")
-    time.sleep(2)
-    st.rerun()
 
 # --- ダイスロール処理 ---
 if is_my_turn:
@@ -450,6 +453,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
