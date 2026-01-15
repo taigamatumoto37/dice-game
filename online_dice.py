@@ -218,20 +218,34 @@ is_my_turn = (data["turn"] == f"P{my_id}")
 current_phase = data.get("phase", "ATK")
 pending_dmg = data.get("pending_damage", 0)
 
-# ★ 修正3: オートリフレッシュの条件に「自分のターンでない時」を徹底
-# 自分が操作すべき時（自分のターンで攻撃フェーズ）はリロードさせない
+# --- オートリフレッシュの条件を改良 ---
+# 以下の「いずれか」に当てはまる時だけリロードする
+# 1. 自分のターンではない、かつ相手がまだ攻撃していない（相手のダイスロール中）
+# 2. 自分が攻撃を受けて、防御を選択するのを待っている（フェーズがDEFで、かつ自分のターンの時）
+
+# ※ただし、ここではシンプルに「自分のターンかつ攻撃フェーズ」以外の時に限定します
+should_reload = False
+
 if not is_my_turn:
+    # 相手のターンの時は、相手が攻撃してくるのを待つためにリロードが必要
+    should_reload = True
+    
+    # 【追加】ただし、もしフェーズが DEF で、かつ自分が防御側の場合はリロードを止める
+    # これにより、防御ボタンを押そうとしている最中にリロードされるのを防ぎます
+    if current_phase == "DEF":
+        should_reload = False
+
+if should_reload:
     components.html(
         """
         <script>
         setTimeout(function() {
             window.parent.location.reload();
-        }, 3000);
+        }, 5000); // 5秒に伸ばすと少し操作しやすくなります
         </script>
         """,
         height=0,
     )
-
 st.title("⚔️ YAHTZEE TACTICS ⚔️")
 
 # --- HP表示エリア ---
@@ -453,6 +467,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
