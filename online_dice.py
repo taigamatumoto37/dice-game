@@ -201,6 +201,7 @@ div.stButton > button:hover {
 
 # --- 4. メイン処理 ---
 data = get_data()
+data.setdefault("atk_player", None)
 role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"])
 me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p1", 2, 1)
 
@@ -303,7 +304,13 @@ if (not is_my_turn) and current_phase == "DEF":
                 upd = {
                     "pending_damage": 0,
                     "phase": "ATK",
-                    "turn": data["atk_player"],
+                    atk = data.get("atk_player")
+                    if atk is None:
+                        st.error("⚠️ 状態不整合：atk_player がありません")
+                        st.stop()
+
+                    "turn": atk,
+
                     "atk_player": None,
                     "turn_count": data["turn_count"] + 1,
                     f"{me}_hand": [n for n in my_hand if n != g.name]
@@ -327,7 +334,13 @@ if (not is_my_turn) and current_phase == "DEF":
                 f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
                 "pending_damage": 0,
                 "phase": "ATK",
-                "turn": data["atk_player"],
+                atk = data.get("atk_player")
+                if atk is None:
+                    st.error("⚠️ 状態不整合：atk_player がありません")
+                    st.stop()
+
+                "turn": atk,
+
                 "atk_player": None,
                 "turn_count": data["turn_count"] + 1
             })
@@ -340,7 +353,12 @@ if (not is_my_turn) and current_phase == "DEF":
                 f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
                 "pending_damage": 0,
                 "phase": "ATK",
-                "turn": data["atk_player"],
+                atk = data.get("atk_player")
+                if atk is None:
+                    st.error("⚠️ 状態不整合：atk_player がありません")
+                    st.stop()
+
+                "turn": atk,
                 "atk_player": None,
                 "turn_count": data["turn_count"] + 1
             })
@@ -488,6 +506,7 @@ with st.sidebar:
         })
 
         st.rerun()
+
 
 
 
