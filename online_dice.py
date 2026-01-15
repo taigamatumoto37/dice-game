@@ -436,7 +436,7 @@ with st.sidebar:
 if is_my_turn and current_phase == "DEF":
     st.info("⌛ 相手の防御選択を待っています...")
     st.session_state["lock_input"] = True
-return
+st.stop()
 
 
 
