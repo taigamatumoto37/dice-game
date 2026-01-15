@@ -246,13 +246,27 @@ if is_my_turn:
 
     
     # ここで定義するので NameError は起きません
-    data = get_data()
-    is_my_turn = (data["turn"] == f"P{my_id}")
-    current_phase = data.get("phase", "ATK")
-    pending_dmg = data.get("pending_damage", 0)
+    # 1. データ取得
+data = get_data()
 
-    # --- UI表示 (ここから関数の処理) ---
-    st.title("⚔️ YAHTZEE TACTICS ⚔️")
+# 2. 役割設定（サイドバー）
+role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"], key="role_select")
+me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p1", 2, 1)
+
+# 3. ターン判定
+is_my_turn = (data["turn"] == f"P{my_id}")
+current_phase = data.get("phase", "ATK")
+pending_dmg = data.get("pending_damage", 0)
+
+# ここで初めて if を書ける
+if is_my_turn:
+    st.write("あなたのターンです")
+    # ダイス振る処理など
+
+if not is_my_turn and current_phase == "DEF":
+    st.write("相手の防御ターンです")
+    # 防御処理
+
 
 # HP表示
 c1, c2 = st.columns(2)
@@ -446,6 +460,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
