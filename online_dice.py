@@ -285,11 +285,13 @@ if current_phase == "DEF" and data["turn"] == f"P{my_id}":
             upd = {
                 "pending_damage": 0,
                 "phase": "ATK",
-                "turn": f"P{opp_id}",   # ← 防御後は攻撃側に戻す
+                "turn": data["atk_player"],   # ← ここが核心
+                "atk_player": None,
                 "turn_count": data["turn_count"] + 1,
                 f"{me}_hand": [n for n in my_hand if n != g.name]
             }
 
+               
             # 軽減・反射処理（既存のままでOK）
             upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
 
@@ -297,13 +299,15 @@ if current_phase == "DEF" and data["turn"] == f"P{my_id}":
             st.rerun()
 
     if cols[-1].button("そのまま受ける"):
-        update_db({
+       update_db({
             f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
             "pending_damage": 0,
             "phase": "ATK",
-            "turn": f"P{opp_id}",
+            "turn": data["atk_player"],   # ★ 絶対これ
+            "atk_player": None,
             "turn_count": data["turn_count"] + 1
         })
+
         st.rerun()
 
     st.stop()
@@ -428,6 +432,7 @@ with st.sidebar:
 if current_phase == "DEF" and data["turn"] != f"P{my_id}":
     st.info("⌛ 相手の防御選択を待っています...")
     st.stop()
+
 
 
 
