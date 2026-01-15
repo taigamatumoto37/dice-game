@@ -253,7 +253,21 @@ if p1_hp <= 0 or p2_hp <= 0:
         # フラグもリセット
         st.session_state.counter_finish = False
         cards = list(CARD_DB.keys()); d = cards * 2; random.shuffle(d)
-        update_db({"hp1": 100, "hp2": 100, "p1_hand":[], "p2_hand":[], "p1_used_innate":[], "p2_used_innate":[], "turn":"P1", "turn_count":0, "pending_damage":0, "phase":"ATK", "deck": d})
+        update_db({
+            "hp1": 100,
+            "hp2": 100,
+            "p1_hand": [],
+            "p2_hand": [],
+            "p1_used_innate": [],
+            "p2_used_innate": [],
+            "turn": "P1",
+            "turn_count": 0,
+            "pending_damage": 0,
+            "phase": "ATK",
+            "deck": new_deck,
+            "atk_player": None      # ★ これがないとKeyError
+    })
+
         st.rerun()
     st.stop()
 # --- 相手のダイス表示 ---
@@ -333,10 +347,11 @@ if (not is_my_turn) and current_phase == "DEF":
             st.rerun()
 
     st.stop()
-    # --- 攻撃側の待機表示 ---
-    if current_phase == "DEF" and data["turn"] != f"P{my_id}":
-        st.info("⌛ 相手の防御選択を待っています...")
-        st.stop()
+
+# 攻撃側（必ず防御ブロックの外）
+if is_my_turn and current_phase == "DEF":
+    st.info("⌛ 相手の防御選択を待っています...")
+    st.stop()
 
 
 
@@ -457,8 +472,23 @@ if is_my_turn and st.button("ターンを終了してドロー"):
 with st.sidebar:
     if st.button("🚨 全リセット"):
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
-        update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
+        update_db({
+            "hp1": 100,
+            "hp2": 100,
+            "p1_hand": [],
+            "p2_hand": [],
+            "p1_used_innate": [],
+            "p2_used_innate": [],
+            "turn": "P1",
+            "turn_count": 0,
+            "pending_damage": 0,
+            "phase": "ATK",
+            "deck": new_deck,
+            "atk_player": None      # ★ これがないとKeyError
+        })
+
         st.rerun()
+
 
 
 
