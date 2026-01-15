@@ -393,6 +393,9 @@ for idx, card in enumerate(pool):
                 if card.type == "attack":
                     upd["pending_damage"] = card.power
                     upd["phase"] = "DEF"
+                    upd["turn"] = f"P{opp_id}"      # ← ★これが無い
+                    upd["turn_count"] = data["turn_count"] + 1
+
                 else:
                     upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
                     upd["turn"] = f"P{opp_id}"
@@ -432,7 +435,9 @@ with st.sidebar:
 # --- 攻撃側の待機表示 ---
 if is_my_turn and current_phase == "DEF":
     st.info("⌛ 相手の防御選択を待っています...")
-st.stop()
+    st.session_state["lock_input"] = True
+    return
+
 
 
 
