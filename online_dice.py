@@ -272,44 +272,64 @@ pending_dmg = data.get("pending_damage", 0)
 
 
 # --- 防御側の処理 ---
-if current_phase == "DEF" and data["turn"] == f"P{my_id}":
+if not is_my_turn and current_phase == "DEF":
     st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
-
     my_hand = data.get(f"{me}_hand", [])
     guards = [CARD_DB[n] for n in my_hand if n in CARD_DB and CARD_DB[n].type == "guard"]
 
-    cols = st.columns(len(guards) + 1)
+    # --- ガードカードがある場合 ---
+    if guards:
+        cols = st.columns(len(guards) + 1)
 
-    for i, g in enumerate(guards):
-        if cols[i].button(f"🛡️ {g.name}", key=f"guard_{i}_{g.name}"):
-            upd = {
+        for i, g in enumerate(guards):
+            if cols[i].button(f"🛡️ {g.name}", key=f"guard_{i}_{g.name}"):
+                upd = {
+                    "pending_damage": 0,
+                    "phase": "ATK",
+                    "turn": data["atk_player"],
+                    "atk_player": None,
+                    "turn_count": data["turn_count"] + 1,
+                    f"{me}_hand": [n for n in my_hand if n != g.name]
+                }
+
+                # 軽減・反射処理（省略せずそのまま）
+                if "反射" in g.cond_text or "返し" in g.cond_text:
+                    reflect_dmg = int(pending_dmg * g.power)
+                    upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - reflect_dmg
+                    if upd[f"hp{opp_id}"] <= 0:
+                        st.session_state.counter_finish = True
+                else:
+                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
+
+                update_db(upd)
+                st.rerun()
+
+        # --- 受けるボタン（ガードあり時） ---
+        if cols[-1].button("そのまま受ける"):
+            update_db({
+                f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
                 "pending_damage": 0,
                 "phase": "ATK",
-                "turn": data["atk_player"],   # ← ここが核心
+                "turn": data["atk_player"],
                 "atk_player": None,
-                "turn_count": data["turn_count"] + 1,
-                f"{me}_hand": [n for n in my_hand if n != g.name]
-            }
-
-               
-            # 軽減・反射処理（既存のままでOK）
-            upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
-
-            update_db(upd)
+                "turn_count": data["turn_count"] + 1
+            })
             st.rerun()
 
-if cols[-1].button("そのまま受ける"):
-    update_db({
-        f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
-        "pending_damage": 0,
-        "phase": "ATK",
-        "turn": data["atk_player"],   # 攻撃者に戻す
-        "atk_player": None,
-        "turn_count": data["turn_count"] + 1
-    })
-    st.rerun()
+    # --- ガードカードが無い場合 ---
+    else:
+        if st.button("そのまま受ける"):
+            update_db({
+                f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
+                "pending_damage": 0,
+                "phase": "ATK",
+                "turn": data["atk_player"],
+                "atk_player": None,
+                "turn_count": data["turn_count"] + 1
+            })
+            st.rerun()
 
-st.stop()
+    st.stop()
 
 
 
@@ -432,6 +452,7 @@ with st.sidebar:
 if current_phase == "DEF" and data["turn"] != f"P{my_id}":
     st.info("⌛ 相手の防御選択を待っています...")
     st.stop()
+
 
 
 
