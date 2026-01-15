@@ -254,26 +254,30 @@ if is_my_turn:
     # --- UI表示 (ここから関数の処理) ---
     st.title("⚔️ YAHTZEE TACTICS ⚔️")
 
-    # HP表示
-    c1, c2 = st.columns(2)
-    for p_num in [1, 2]:
-        with (c1 if p_num == 1 else c2):
-            hp = data[f"hp{p_num}"]
-            st.write(f"### PLAYER {p_num} {'🔥' if data['turn'] == f'P{p_num}' else ''}")
-            st.markdown(f"**❤️ HP: `{hp}`**")
-            hp_percent = max(0, (hp / 100) * 100)
-            st.markdown(f"<div class='hp-bar-container'><div class='hp-bar-fill' style='width:{min(100, hp_percent)}%'></div></div>", unsafe_allow_html=True)
+# HP表示
+c1, c2 = st.columns(2)
+for p_num in [1, 2]:
+    with (c1 if p_num == 1 else c2):
+        hp = data[f"hp{p_num}"]
+        st.write(f"### PLAYER {p_num} {'🔥' if data['turn'] == f'P{p_num}' else ''}")
+        st.markdown(f"**❤️ HP: `{hp}`**")
+        hp_percent = max(0, (hp / 100) * 100)
+        st.markdown(
+            f"<div class='hp-bar-container'><div class='hp-bar-fill' style='width:{min(100, hp_percent)}%'></div></div>",
+            unsafe_allow_html=True
+        )
 
-    # 勝敗判定ロジック (元のコードをここに移動)
-    p1_hp = data["hp1"]
-    p2_hp = data["hp2"]
-    if p1_hp <= 0 or p2_hp <= 0:
+# 勝敗判定ロジック
+p1_hp = data["hp1"]
+p2_hp = data["hp2"]
+if p1_hp <= 0 or p2_hp <= 0:
     if p1_hp <= 0:
         st.error("PLAYER 2 の勝利！")
     else:
         st.error("PLAYER 1 の勝利！")
 
-    st.stop()   # ← fragmentでは return より安全
+    st.stop()   # 勝敗が決まったらここで処理を止める
+
 
 
     # 相手のダイス表示
@@ -442,6 +446,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
