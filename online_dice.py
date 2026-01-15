@@ -209,9 +209,31 @@ role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"], key="role_s
 # --- 定期更新エリアを定義 ---
 @st.fragment(run_every="3s")
 def game_main(role):
-    # 関数の中でデータを取得し、変数を定義する
     data = get_data()
-    me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p1", 2, 1)
+    me, opp, my_id, opp_id = ...
+    is_my_turn = (data["turn"] == f"P{my_id}")
+    current_phase = data.get("phase", "ATK")
+    pending_dmg = data.get("pending_damage", 0)
+
+    # 🔽🔽🔽 ここに入れる 🔽🔽🔽
+    if (not is_my_turn) and current_phase == "DEF":
+
+        st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
+
+        my_hand = data.get(f"{me}_hand", [])
+        guards = [
+            CARD_DB[n]
+            for n in my_hand
+            if n in CARD_DB and CARD_DB[n].type == "guard"
+        ]
+
+        atk = data.get("atk_player")
+        if atk is None:
+            st.error("⚠️ 状態不整合：atk_player がありません")
+            st.stop()
+
+        # （以下、今書いている防御処理を全部ここに）
+
     
     # ここで定義するので NameError は起きません
     data = get_data()
@@ -250,7 +272,7 @@ def game_main(role):
 
     # --- ターンの進行制御 ---
 # --- 防御側の処理（ガードターン） ---
-data = get_data()
+
 if (not is_my_turn) and current_phase == "DEF":
 
     st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
@@ -430,6 +452,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
