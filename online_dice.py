@@ -320,7 +320,7 @@ if not is_my_turn and current_phase == "DEF":
 # --- 攻撃側の待機表示 ---
 if is_my_turn and current_phase == "DEF":
     st.info("⌛ 相手の防御選択を待っています...")
-	st.stop()
+st.stop()
 
 # --- ダイスロール処理 ---
 if is_my_turn:
@@ -433,6 +433,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
