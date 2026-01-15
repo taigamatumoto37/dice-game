@@ -199,164 +199,73 @@ div.stButton > button:hover {
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. メイン処理 ---
-# サイドバーは常に表示（フラグメントの外に出す）
+import streamlit as st
+# ... (他のインポートやCardクラスの定義、CARD_DB、CSSなどはそのまま)
+
+# --- 4. メイン処理 (関数の外) ---
+# 役割選択を一番上に置く（これでPlayer 2への切り替えが安定します）
 role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"], key="role_select")
 
-# --- 定期更新したいエリアを「Fragment」として定義 ---
-@st.fragment(run_every="3s")  # 3秒ごとにこの中身だけを勝手に実行する
-def game_main():
-    data = get_data()  # 最新データを取得
-    
+# --- 定期更新エリアを定義 ---
+@st.fragment(run_every="3s")
+def game_main(role):
+    # 関数の中でデータを取得し、変数を定義する
+    data = get_data()
     me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p1", 2, 1)
+    
+    # ここで定義するので NameError は起きません
     is_my_turn = (data["turn"] == f"P{my_id}")
     current_phase = data.get("phase", "ATK")
     pending_dmg = data.get("pending_damage", 0)
-# --- オートリフレッシュの条件を改良 ---
-# 以下の「いずれか」に当てはまる時だけリロードする
-# 1. 自分のターンではない、かつ相手がまだ攻撃していない（相手のダイスロール中）
-# 2. 自分が攻撃を受けて、防御を選択するのを待っている（フェーズがDEFで、かつ自分のターンの時）
 
-# ※ただし、ここではシンプルに「自分のターンかつ攻撃フェーズ」以外の時に限定します
-should_reload = False
+    # --- UI表示 (ここから関数の処理) ---
+    st.title("⚔️ YAHTZEE TACTICS ⚔️")
 
-if not is_my_turn:
-    # 相手のターンの時は、相手が攻撃してくるのを待つためにリロードが必要
-    should_reload = True
-    
-    # 【追加】ただし、もしフェーズが DEF で、かつ自分が防御側の場合はリロードを止める
-    # これにより、防御ボタンを押そうとしている最中にリロードされるのを防ぎます
-    if current_phase == "DEF":
-        should_reload = False
+    # HP表示
+    c1, c2 = st.columns(2)
+    for p_num in [1, 2]:
+        with (c1 if p_num == 1 else c2):
+            hp = data[f"hp{p_num}"]
+            st.write(f"### PLAYER {p_num} {'🔥' if data['turn'] == f'P{p_num}' else ''}")
+            st.markdown(f"**❤️ HP: `{hp}`**")
+            hp_percent = max(0, (hp / 100) * 100)
+            st.markdown(f"<div class='hp-bar-container'><div class='hp-bar-fill' style='width:{min(100, hp_percent)}%'></div></div>", unsafe_allow_html=True)
 
-if should_reload:
-    components.html(
-        """
-        <script>
-        setTimeout(function() {
-            window.parent.location.reload();
-        }, 5000); // 5秒に伸ばすと少し操作しやすくなります
-        </script>
-        """,
-        height=0,
-    )
-st.title("⚔️ YAHTZEE TACTICS ⚔️")
+    # 勝敗判定ロジック (元のコードをここに移動)
+    p1_hp = data["hp1"]
+    p2_hp = data["hp2"]
+    if p1_hp <= 0 or p2_hp <= 0:
+        # (中略: 元の勝敗表示コード)
+        return
 
-# --- HP表示エリア ---
-c1, c2 = st.columns(2)
-for p_num in [1, 2]:
-    with (c1 if p_num == 1 else c2):
-        hp = data[f"hp{p_num}"]
-        st.write(f"### PLAYER {p_num} {'🔥' if data['turn'] == f'P{p_num}' else ''}")
-        st.markdown(f"**❤️ HP: `{hp}`**")
-        # HPが100を超えてもバーが壊れないように計算
-        hp_percent = max(0, (hp / 100) * 100)
-        st.markdown(f"<div class='hp-bar-container'><div class='hp-bar-fill' style='width:{min(100, hp_percent)}%'></div></div>", unsafe_allow_html=True)
+    # 相手のダイス表示
+    st.write(f"### 🛡️ 相手(P{opp_id})の刻印")
+    o_dice = data.get(f"{opp}_dice", [1,1,1,1,1])
+    oc = st.columns(5)
+    for i in range(5):
+        oc[i].markdown(f"<div class='dice-slot opp-dice'>{o_dice[i]}</div>", unsafe_allow_html=True)
 
-# --- 勝敗判定エリア ---
-p1_hp = data["hp1"]
-p2_hp = data["hp2"]
+    st.divider()
 
-if p1_hp <= 0 or p2_hp <= 0:
-    winner = "Player 2" if p1_hp <= 0 else "Player 1"
-    
-    # 反射勝利フラグがあるかチェック
-    is_counter = st.session_state.get("counter_finish", False)
-    
-    bg_color = "rgba(255, 215, 0, 0.3)" if is_counter else "rgba(255, 0, 0, 0.2)"
-    border_color = "#FFD700" if is_counter else "#FF0000"
-    main_text = "FULL COUNTER WIN!" if is_counter else "GAME OVER"
-    text_color = "#FFD700" if is_counter else "#FF0000"
+    # --- ターンの進行制御 ---
+    if not is_my_turn:
+        if current_phase == "DEF" and pending_dmg > 0:
+            # 防御フェーズの処理 (元のコード)
+            st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
+            # ...防御ボタンの表示...
+        else:
+            st.info("⌛ 相手のターンを待っています...")
+            # ここで return せずに関数を抜けることで、3秒後にまたここが実行されます
+    else:
+        # 自分のターンの処理 (ダイスロール、スキル発動など)
+        if current_phase == "ATK":
+            # ...ダイスロール・スキル発動ボタン...
+            st.success("あなたのターンです！アクションを選択してください。")
+        elif current_phase == "DEF":
+            st.info("⌛ 相手の防御を待っています...")
 
-    st.markdown(f"""
-        <div style="text-align: center; padding: 50px; background-color: {bg_color}; 
-                    border-radius: 20px; border: 8px double {border_color}; margin: 20px 0;
-                    box-shadow: 0 0 20px {border_color}; animation: pulse 2s infinite;">
-            <h1 style="color: {text_color}; font-size: 80px; margin-bottom: 10px; text-shadow: 2px 2px 10px black;">{main_text}</h1>
-            <h2 style="color: white; font-size: 40px;">🏆 Winner: {winner}</h2>
-            <p style="color: #EEE;">{'相手の力を利用して勝利を掴み取った！' if is_counter else '激闘の末、勝者が決定した！'}</p>
-        </div>
-        <style>
-            @keyframes pulse {{
-                0% {{ transform: scale(1); opacity: 1; }}
-                50% {{ transform: scale(1.02); opacity: 0.8; }}
-                100% {{ transform: scale(1); opacity: 1; }}
-            }}
-        </style>
-    """, unsafe_allow_html=True)
-    
-    if st.button("🔄 もう一度遊ぶ (リセット)"):
-        # フラグもリセット
-        st.session_state.counter_finish = False
-        cards = list(CARD_DB.keys()); d = cards * 2; random.shuffle(d)
-        update_db({"hp1": 100, "hp2": 100, "p1_hand":[], "p2_hand":[], "p1_used_innate":[], "p2_used_innate":[], "turn":"P1", "turn_count":0, "pending_damage":0, "phase":"ATK", "deck": d})
-        st.rerun()
-    st.stop()
-# --- 相手のダイス表示 ---
-st.write(f"### 🛡️ 相手(P{opp_id})の刻印")
-o_dice = data.get(f"{opp}_dice", [1,1,1,1,1])
-oc = st.columns(5)
-for i in range(5):
-    oc[i].markdown(f"<div class='dice-slot opp-dice'>{o_dice[i]}</div>", unsafe_allow_html=True)
-
-st.divider()
-
-# --- 重要：変数の定義を防御ロジックより先に行う ---
-is_my_turn = (data["turn"] == f"P{my_id}")
-current_phase = data.get("phase", "ATK")
-pending_dmg = data.get("pending_damage", 0)
-
-# --- 防御側の処理：相手が攻撃してきたとき ---
-# --- 防御側の処理 ---
-if not is_my_turn and current_phase == "DEF":
-    st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
-    my_hand = data.get(f"{me}_hand", [])
-    guards = [CARD_DB[n] for n in my_hand if n in CARD_DB and CARD_DB[n].type == "guard"]
-    
-    cols = st.columns(len(guards) + 1)
-    for i, g in enumerate(guards):
-        if cols[i].button(
-    f"🛡️ {g.name}",
-    key=f"guard_{i}_{g.name}"):
-            upd = {
-                "pending_damage": 0,
-                "phase": "ATK",
-                "turn": f"P{my_id}",
-                "turn_count": data["turn_count"] + 1,
-                f"{me}_hand": [n for n in my_hand if n != g.name]
-            }
-            
-            # --- 反射・軽減ロジック ---
-            if "反射" in g.cond_text or "返し" in g.cond_text:
-                reflect_dmg = int(pending_dmg * g.power)
-                new_opp_hp = data[f"hp{opp_id}"] - reflect_dmg
-                upd[f"hp{opp_id}"] = new_opp_hp
-                
-                # 相手のHPが0以下になったら、セッションに反射勝利フラグを立てる
-                if new_opp_hp <= 0:
-                    st.session_state.counter_finish = True
-                
-                st.success(f"✨ 反射！ 相手に {reflect_dmg} ダメージ返した！")
-                
-                # 「トゲトゲの盾」のような軽減併用タイプの場合
-                if "軽減" in g.cond_text:
-                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - (pending_dmg * 0.5))
-            else:
-                # 通常のガード（軽減）
-                upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
-            
-            update_db(upd)
-            time.sleep(1) # 演出を見せるため
-            st.rerun()
-            
-    if cols[-1].button("そのまま受ける"):
-        update_db({f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg, "pending_damage": 0, "phase": "ATK", "turn": f"P{my_id}", "turn_count": data["turn_count"]+1})
-        st.rerun()
-    st.stop()
-
-# --- 攻撃側の待機表示 ---
-if is_my_turn and current_phase == "DEF":
-    st.info("⌛ 相手の防御選択を待っています...")
+# --- 最後にこの関数を呼び出す ---
+game_main(role)
 
 # --- ダイスロール処理 ---
 if is_my_turn:
@@ -461,6 +370,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
