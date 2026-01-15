@@ -248,24 +248,82 @@ def game_main(role):
     st.divider()
 
     # --- ターンの進行制御 ---
-    if not is_my_turn:
-        if current_phase == "DEF" and pending_dmg > 0:
-            # 防御フェーズの処理 (元のコード)
-            st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
-            # ...防御ボタンの表示...
-        else:
-            st.info("⌛ 相手のターンを待っています...")
-            # ここで return せずに関数を抜けることで、3秒後にまたここが実行されます
-    else:
-        # 自分のターンの処理 (ダイスロール、スキル発動など)
-        if current_phase == "ATK":
-            # ...ダイスロール・スキル発動ボタン...
-            st.success("あなたのターンです！アクションを選択してください。")
-        elif current_phase == "DEF":
-            st.info("⌛ 相手の防御を待っています...")
+# --- 防御側の処理（ガードターン） ---
+if (not is_my_turn) and current_phase == "DEF":
 
-# --- 最後にこの関数を呼び出す ---
-game_main(role)
+    st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
+
+    my_hand = data.get(f"{me}_hand", [])
+    guards = [
+        CARD_DB[n]
+        for n in my_hand
+        if n in CARD_DB and CARD_DB[n].type == "guard"
+    ]
+
+    atk = data.get("atk_player")
+    if atk is None:
+        st.error("⚠️ 状態不整合：atk_player がありません")
+        st.stop()
+
+    # --- ガードカードがある場合 ---
+    if guards:
+        cols = st.columns(len(guards) + 1)
+
+        for i, g in enumerate(guards):
+            if cols[i].button(f"🛡️ {g.name}", key=f"guard_{i}_{g.name}"):
+
+                upd = {
+                    "pending_damage": 0,
+                    "phase": "ATK",
+                    "turn": atk,              # ← 攻撃者に戻す
+                    "atk_player": None,
+                    "turn_count": data["turn_count"] + 1,
+                    f"{me}_hand": [n for n in my_hand if n != g.name]
+                }
+
+                # --- 反射 or 軽減 ---
+                if "反射" in g.cond_text or "返し" in g.cond_text:
+                    reflect_dmg = int(pending_dmg * g.power)
+                    upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - reflect_dmg
+
+                    if upd[f"hp{opp_id}"] <= 0:
+                        st.session_state.counter_finish = True
+
+                else:
+                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(
+                        0, pending_dmg - g.power
+                    )
+
+                update_db(upd)
+                st.rerun()
+
+        # --- そのまま受ける ---
+        if cols[-1].button("そのまま受ける"):
+            update_db({
+                f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
+                "pending_damage": 0,
+                "phase": "ATK",
+                "turn": atk,
+                "atk_player": None,
+                "turn_count": data["turn_count"] + 1
+            })
+            st.rerun()
+
+    # --- ガードカードが無い場合 ---
+    else:
+        if st.button("そのまま受ける"):
+            update_db({
+                f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
+                "pending_damage": 0,
+                "phase": "ATK",
+                "turn": atk,
+                "atk_player": None,
+                "turn_count": data["turn_count"] + 1
+            })
+            st.rerun()
+
+    st.stop()
+
 
 # --- ダイスロール処理 ---
 if is_my_turn:
@@ -370,6 +428,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
