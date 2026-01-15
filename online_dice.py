@@ -298,18 +298,19 @@ if current_phase == "DEF" and data["turn"] == f"P{my_id}":
             update_db(upd)
             st.rerun()
 
-    if cols[-1].button("そのまま受ける"):
-       update_db({
-            f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
-            "pending_damage": 0,
-            "phase": "ATK",
-            "turn": data["atk_player"],   # ★ 絶対これ
-            "atk_player": None,
-            "turn_count": data["turn_count"] + 1
-        })
-        st.rerun()
-        
-    st.stop()
+if cols[-1].button("そのまま受ける"):
+    update_db({
+        f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
+        "pending_damage": 0,
+        "phase": "ATK",
+        "turn": data["atk_player"],   # 攻撃者に戻す
+        "atk_player": None,
+        "turn_count": data["turn_count"] + 1
+    })
+    st.rerun()
+
+st.stop()
+
 
 
 # --- ダイスロール処理 ---
@@ -431,6 +432,7 @@ with st.sidebar:
 if current_phase == "DEF" and data["turn"] != f"P{my_id}":
     st.info("⌛ 相手の防御選択を待っています...")
     st.stop()
+
 
 
 
