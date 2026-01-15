@@ -30,7 +30,7 @@ components.html(
             var audio = document.getElementById('bgm');
             if (audio.paused) {{
                 audio.play().catch(e => console.log("BGM Playback failed:", e));
-            }}
+            }}sleep 
         }}, {{ once: true }});
     </script>
     """,
@@ -88,7 +88,7 @@ CARD_DB = {
     "ナイト・シールド": Card("ナイト・シールド", "guard", 25, lambda d: True, "無条件"), # 追加
     "ホーリー・バリア": Card("ホーリー・バリア", "guard", 45, lambda d: True, "無条件"), # 追加
     "ミラー・シールド": Card("ミラー・シールド", "guard", 1.0, lambda d: True, "100%反射"),
-    "トゲトゲの盾": Card("トゲトゲの盾", "guard", 0.5, lambda d: True, "50%反射+50%軽減"),
+    "トゲトゲの盾": Card("トゲトゲの盾", "guard", 1.5, lambda d: True, "150%反射"),
 }
 
 
@@ -292,7 +292,7 @@ if not is_my_turn and current_phase == "DEF":
             
             # --- 反射・軽減ロジック ---
             if "反射" in g.cond_text or "返し" in g.cond_text:
-                reflect_dmg = int(pending_dmg * g.power)
+                reflect_dmg = int(pen防御選択ding_dmg * g.power)
                 new_opp_hp = data[f"hp{opp_id}"] - reflect_dmg
                 upd[f"hp{opp_id}"] = new_opp_hp
                 
@@ -310,8 +310,7 @@ if not is_my_turn and current_phase == "DEF":
                 upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
             
             update_db(upd)
-            time.sleep(1) # 演出を見せるため
-            st.rerun()
+           
             
     if cols[-1].button("そのまま受ける"):
         update_db({f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg, "pending_damage": 0, "phase": "ATK", "turn": f"P{my_id}", "turn_count": data["turn_count"]+1})
@@ -321,8 +320,7 @@ if not is_my_turn and current_phase == "DEF":
 # --- 攻撃側の待機表示 ---
 if is_my_turn and current_phase == "DEF":
     st.info("⌛ 相手の防御選択を待っています...")
-    time.sleep(2)
-    st.rerun()
+	st.stop()
 
 # --- ダイスロール処理 ---
 if is_my_turn:
@@ -414,18 +412,27 @@ for idx, card in enumerate(pool):
 
 
 if is_my_turn and st.button("ターンを終了してドロー"):
-    latest = get_data()
-    deck = latest.get("deck", [])
-    hand = list(latest.get(f"{me}_hand", []))
-    if deck: hand.append(deck.pop(0))
-    update_db({"deck": deck, f"{me}_hand": hand, "turn": f"P{opp_id}", "turn_count": latest["turn_count"] + 1})
-    play_se(SE_URL)
-    st.rerun()
+    deck = data.get("deck", [])
+    hand = list(data.get(f"{me}_hand", []))
+
+    if deck:
+        hand.append(deck.pop(0))
+
+    update_db({
+        "deck": deck,
+        f"{me}_hand": hand,
+        "turn": f"P{opp_id}",
+        "turn_count": data["turn_count"] + 1
+    })
+
+    st.audio(SE_URL, autoplay=True)
+  
 
 with st.sidebar:
     if st.button("🚨 全リセット"):
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
