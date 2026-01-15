@@ -30,7 +30,7 @@ components.html(
             var audio = document.getElementById('bgm');
             if (audio.paused) {{
                 audio.play().catch(e => console.log("BGM Playback failed:", e));
-            }}sleep 
+            }}
         }}, {{ once: true }});
     </script>
     """,
@@ -88,7 +88,7 @@ CARD_DB = {
     "ナイト・シールド": Card("ナイト・シールド", "guard", 25, lambda d: True, "無条件"), # 追加
     "ホーリー・バリア": Card("ホーリー・バリア", "guard", 45, lambda d: True, "無条件"), # 追加
     "ミラー・シールド": Card("ミラー・シールド", "guard", 1.0, lambda d: True, "100%反射"),
-    "トゲトゲの盾": Card("トゲトゲの盾", "guard", 1.5, lambda d: True, "150%反射"),
+    "トゲトゲの盾": Card("トゲトゲの盾", "guard", 0.5, lambda d: True, "50%反射+50%軽減"),
 }
 
 
@@ -201,7 +201,6 @@ div.stButton > button:hover {
 
 # --- 4. メイン処理 ---
 data = get_data()
-data.setdefault("atk_player", None)
 role = st.sidebar.radio("役割を選択", ["Player 1", "Player 2"])
 me, opp, my_id, opp_id = ("p1", "p2", 1, 2) if role == "Player 1" else ("p2", "p1", 2, 1)
 
@@ -254,21 +253,7 @@ if p1_hp <= 0 or p2_hp <= 0:
         # フラグもリセット
         st.session_state.counter_finish = False
         cards = list(CARD_DB.keys()); d = cards * 2; random.shuffle(d)
-        update_db({
-            "hp1": 100,
-            "hp2": 100,
-            "p1_hand": [],
-            "p2_hand": [],
-            "p1_used_innate": [],
-            "p2_used_innate": [],
-            "turn": "P1",
-            "turn_count": 0,
-            "pending_damage": 0,
-            "phase": "ATK",
-            "deck": new_deck,
-            "atk_player": None      # ★ これがないとKeyError
-    })
-
+        update_db({"hp1": 100, "hp2": 100, "p1_hand":[], "p2_hand":[], "p1_used_innate":[], "p2_used_innate":[], "turn":"P1", "turn_count":0, "pending_damage":0, "phase":"ATK", "deck": d})
         st.rerun()
     st.stop()
 # --- 相手のダイス表示 ---
@@ -285,90 +270,59 @@ is_my_turn = (data["turn"] == f"P{my_id}")
 current_phase = data.get("phase", "ATK")
 pending_dmg = data.get("pending_damage", 0)
 
+# --- 防御側の処理：相手が攻撃してきたとき ---
 # --- 防御側の処理 ---
-if (not is_my_turn) and current_phase == "DEF":
-
+if not is_my_turn and current_phase == "DEF":
     st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
     my_hand = data.get(f"{me}_hand", [])
     guards = [CARD_DB[n] for n in my_hand if n in CARD_DB and CARD_DB[n].type == "guard"]
-
-    # === ガードカードがある場合 ===
-    if guards:
-        cols = st.columns(len(guards) + 1)
-
-        for i, g in enumerate(guards):
-            if cols[i].button(f"🛡️ {g.name}", key=f"guard_{i}_{g.name}"):
-
-                atk = data.get("atk_player")
-                if atk is None:
-                    st.error("⚠️ 状態不整合：atk_player がありません")
-                    st.stop()
-
-                upd = {
-                    "pending_damage": 0,
-                    "phase": "ATK",
-                    "turn": atk,
-                    "atk_player": None,
-                    "turn_count": data["turn_count"] + 1,
-                    f"{me}_hand": [n for n in my_hand if n != g.name]
-                }
-
-                # --- ダメージ処理 ---
-                if "反射" in g.cond_text or "返し" in g.cond_text:
-                    reflect_dmg = int(pending_dmg * g.power)
-                    upd[f"hp{opp_id}"] = data[f"hp{opp_id}"] - reflect_dmg
-                    if upd[f"hp{opp_id}"] <= 0:
-                        st.session_state.counter_finish = True
-                else:
-                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
-
-                update_db(upd)
-                st.rerun()
-
-        # --- そのまま受ける（ガードあり） ---
-        if cols[-1].button("そのまま受ける"):
-
-            atk = data.get("atk_player")
-            if atk is None:
-                st.error("⚠️ 状態不整合：atk_player がありません")
-                st.stop()
-
-            update_db({
-                f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
+    
+    cols = st.columns(len(guards) + 1)
+    for i, g in enumerate(guards):
+        if cols[i].button(
+    f"🛡️ {g.name}",
+    key=f"guard_{i}_{g.name}"):
+            upd = {
                 "pending_damage": 0,
                 "phase": "ATK",
-                "turn": atk,
-                "atk_player": None,
-                "turn_count": data["turn_count"] + 1
-            })
-
+                "turn": f"P{my_id}",
+                "turn_count": data["turn_count"] + 1,
+                f"{me}_hand": [n for n in my_hand if n != g.name]
+            }
+            
+            # --- 反射・軽減ロジック ---
+            if "反射" in g.cond_text or "返し" in g.cond_text:
+                reflect_dmg = int(pending_dmg * g.power)
+                new_opp_hp = data[f"hp{opp_id}"] - reflect_dmg
+                upd[f"hp{opp_id}"] = new_opp_hp
+                
+                # 相手のHPが0以下になったら、セッションに反射勝利フラグを立てる
+                if new_opp_hp <= 0:
+                    st.session_state.counter_finish = True
+                
+                st.success(f"✨ 反射！ 相手に {reflect_dmg} ダメージ返した！")
+                
+                # 「トゲトゲの盾」のような軽減併用タイプの場合
+                if "軽減" in g.cond_text:
+                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - (pending_dmg * 0.5))
+            else:
+                # 通常のガード（軽減）
+                upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
+            
+            update_db(upd)
+            time.sleep(1) # 演出を見せるため
             st.rerun()
-
-    # === ガードカードが無い場合 ===
-    else:
-        if st.button("そのまま受ける"):
-
-            atk = data.get("atk_player")
-            if atk is None:
-                st.error("⚠️ 状態不整合：atk_player がありません")
-                st.stop()
-
-            update_db({
-                f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg,
-                "pending_damage": 0,
-                "phase": "ATK",
-                "turn": atk,
-                "atk_player": None,
-                "turn_count": data["turn_count"] + 1
-            })
-
-            st.rerun()
-
+            
+    if cols[-1].button("そのまま受ける"):
+        update_db({f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg, "pending_damage": 0, "phase": "ATK", "turn": f"P{my_id}", "turn_count": data["turn_count"]+1})
+        st.rerun()
     st.stop()
 
-
-
-
+# --- 攻撃側の待機表示 ---
+if is_my_turn and current_phase == "DEF":
+    st.info("⌛ 相手の防御選択を待っています...")
+    time.sleep(2)
+    st.rerun()
 
 # --- ダイスロール処理 ---
 if is_my_turn:
@@ -442,18 +396,11 @@ for idx, card in enumerate(pool):
                 play_se(SE_URL)
                 upd = {}
 
-                
                 if card.type == "attack":
                     upd["pending_damage"] = card.power
                     upd["phase"] = "DEF"
-                    upd["turn"] = f"P{opp_id}"          # 防御側
-                    upd["atk_player"] = f"P{my_id}"     # ★攻撃者を保存
-                    upd["turn_count"] = data["turn_count"] + 1
-
-
                 else:
                     upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
-                    upd["phase"] = "ATK"
                     upd["turn"] = f"P{opp_id}"
                     upd["turn_count"] = data["turn_count"] + 1
 
@@ -467,62 +414,17 @@ for idx, card in enumerate(pool):
 
 
 if is_my_turn and st.button("ターンを終了してドロー"):
-    deck = data.get("deck", [])
-    hand = list(data.get(f"{me}_hand", []))
-
-    if deck:
-        hand.append(deck.pop(0))
-
-    update_db({
-        "deck": deck,
-        f"{me}_hand": hand,
-        "turn": f"P{opp_id}",
-        "turn_count": data["turn_count"] + 1
-    })
-
-    st.audio(SE_URL, autoplay=True)
-  
+    latest = get_data()
+    deck = latest.get("deck", [])
+    hand = list(latest.get(f"{me}_hand", []))
+    if deck: hand.append(deck.pop(0))
+    update_db({"deck": deck, f"{me}_hand": hand, "turn": f"P{opp_id}", "turn_count": latest["turn_count"] + 1})
+    play_se(SE_URL)
+    st.rerun()
 
 with st.sidebar:
     if st.button("🚨 全リセット"):
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
-        update_db({
-            "hp1": 100,
-            "hp2": 100,
-            "p1_hand": [],
-            "p2_hand": [],
-            "p1_used_innate": [],
-            "p2_used_innate": [],
-            "turn": "P1",
-            "turn_count": 0,
-            "pending_damage": 0,
-            "phase": "ATK",
-            "deck": new_deck,
-            "atk_player": None      # ★ これがないとKeyError
-        })
-
+        update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
