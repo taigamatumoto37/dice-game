@@ -290,11 +290,6 @@ pending_dmg = data.get("pending_damage", 0)
 # --- 防御側の処理 ---
 if not is_my_turn and current_phase == "ATK":
     st.info("⌛ 相手の攻撃を待っています…")
-elif current_phase == "DEF":
-    st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
-        # 防御ボタンの表示ロジック...
-  
-
 if not is_my_turn and current_phase == "DEF":
     st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
     my_hand = data.get(f"{me}_hand", [])
@@ -480,6 +475,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
