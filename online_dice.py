@@ -339,7 +339,6 @@ if not is_my_turn and current_phase == "DEF":
                 upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
             
             update_db(upd)
-            time.sleep(1) # 演出を見せるため
             st.rerun()
             
     if cols[-1].button("そのまま受ける"):
@@ -456,6 +455,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
