@@ -363,12 +363,13 @@ if not is_my_turn and current_phase == "DEF":
         auto_refresh(1.5)
     st.stop() # 相手のターンならここで止める
 # --- 攻撃側の待機表示 ---
-if is_my_turn and current_phase == "DEF":
-    st.info("⌛ 相手の防御を待っています…")
+if not is_my_turn and current_phase == "ATK":
+    st.info("⌛ 相手の攻撃を待っています…")
     if not st.session_state.polling:
         st.session_state.polling = True
         auto_refresh(1.5)
     st.stop()
+
 
 # --- ダイスロール処理 ---
 if is_my_turn:
@@ -439,6 +440,7 @@ for idx, card in enumerate(pool):
 
         if is_my_turn and is_ready and card.type != "guard":
             if st.button("発動", key=f"atk_{idx}"):
+                stop_polling()
                 play_se(SE_URL)
                 upd = {}
 
@@ -473,6 +475,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
