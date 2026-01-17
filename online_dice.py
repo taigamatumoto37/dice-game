@@ -95,7 +95,7 @@ CARD_DB = {
     "ランダムシールド": Card("ランダムシールド", "guard", 45, lambda d: True, "ランダム"), 
     "ランダムシールド": Card("ランダムシールド", "guard", 1.0, lambda d: True, "ランダム"),
     "ランダムシールド": Card("ランダムシールド", "guard", 1.5, lambda d: True, "ランダム"),
-    "固有シールド": Card("固有ちょいシールド", "guard", 15, lambda d: True, "15ダメージ防ぐ"), 
+    
 }
 
 
@@ -108,7 +108,7 @@ INNATE_DECK = [
     Card("固有:等位の福音", "heal", 40, lambda d: len(set(d)) == 2 and any(d.count(x) == 3 for x in set(d)), "フルハウス"),
     Card("固有:轟力・大山波", "attack", 35, lambda d: sum(d) >= 22, "合計22以上"),
     Card("固有:静寂・小波斬", "attack", 25, lambda d: sum(d) <= 12, "合計12以下"),
-    
+    Card("固有ちょいシールド", "guard", 15, lambda d: True, "15ダメージ防ぐ"), 
 ]
 
 def get_data(): return supabase.table("game_state").select("*").eq("id", 1).execute().data[0]
@@ -278,25 +278,46 @@ is_my_turn = (data["turn"] == f"P{my_id}")
 current_phase = data.get("phase", "ATK")
 pending_dmg = data.get("pending_damage", 0)
 
-# --- 防御側の処理：相手が攻撃してきたとき ---
 # --- 防御側の処理 ---
 if not is_my_turn and current_phase == "DEF":
     st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
     my_hand = data.get(f"{me}_hand", [])
-    guards = [CARD_DB[n] for n in my_hand if n in CARD_DB and CARD_DB[n].type == "guard"]
-    
+
+    # 通常カードのガード
+    hand_guards = [
+        CARD_DB[n]
+        for n in my_hand
+        if n in CARD_DB and CARD_DB[n].type == "guard"
+    ]
+
+    # ★ 固有ガード
+    innate_guards = [
+        c for c in INNATE_DECK
+        if c.type == "guard" and c.name not in data.get(f"{me}_used_innate", [])
+    ]
+    guards = hand_guards + innate_guards
+
+
     cols = st.columns(len(guards) + 1)
     for i, g in enumerate(guards):
         if cols[i].button(
     f"🛡️ {g.name}",
     key=f"guard_{i}_{g.name}"):
-            upd = {
-                "pending_damage": 0,
-                "phase": "ATK",
-                "turn": f"P{my_id}",
-                "turn_count": data["turn_count"] + 1,
-                f"{me}_hand": [n for n in my_hand if n != g.name]
-            }
+          upd = {
+            "pending_damage": 0,
+            "phase": "ATK",
+            "turn": f"P{my_id}",
+            "turn_count": data["turn_count"] + 1,
+        }
+
+        if g.name in my_hand:
+    # 通常ガード
+            upd[f"{me}_hand"] = [n for n in my_hand if n != g.name]
+        else:
+    # ★ 固有ガード
+            upd[f"{me}_used_innate"] = data.get(f"{me}_used_innate", []) + [g.name]
+
+                
             
             # --- 反射・軽減ロジック ---
             if "反射" in g.cond_text or "返し" in g.cond_text:
@@ -435,6 +456,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
