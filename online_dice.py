@@ -95,6 +95,7 @@ CARD_DB = {
     "ランダムシールド": Card("ランダムシールド", "guard", 45, lambda d: True, "ランダム"), 
     "ランダムシールド": Card("ランダムシールド", "guard", 1.0, lambda d: True, "ランダム"),
     "ランダムシールド": Card("ランダムシールド", "guard", 1.5, lambda d: True, "ランダム"),
+    Card("固有ちょいシールド", "guard", 15, lambda d: True, "15ダメージ防ぐ"), 
 }
 
 
@@ -107,7 +108,7 @@ INNATE_DECK = [
     Card("固有:等位の福音", "heal", 40, lambda d: len(set(d)) == 2 and any(d.count(x) == 3 for x in set(d)), "フルハウス"),
     Card("固有:轟力・大山波", "attack", 35, lambda d: sum(d) >= 22, "合計22以上"),
     Card("固有:静寂・小波斬", "attack", 25, lambda d: sum(d) <= 12, "合計12以下"),
-    Card("固有ちょいシールド", "guard", 15, lambda d: True, "15ダメージ防ぐ"), 
+    
 ]
 
 def get_data(): return supabase.table("game_state").select("*").eq("id", 1).execute().data[0]
@@ -434,6 +435,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
