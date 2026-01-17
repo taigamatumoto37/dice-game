@@ -64,7 +64,7 @@ def card_type_label(card: Card):
 
 CARD_DB = {
     "ジェミニ・ダガー": Card("ジェミニ・ダガー", "attack", 12, check_pair, "ペア"),
-    "トライ・ブラスト": Card("トライ・ブラスト", "attack", 20, check_three, "スリーカード"),
+    "トライ・ブラスト": Card("トライ・ブラスト", "attack", 30, check_three, "スリーカード"),
     "クアッド・ボルテックス": Card("クアッド・ボルテックス", "attack", 35, lambda d: any(d.count(x) >= 4 for x in set(d)), "フォーカード"),
     "五行封印斬": Card("五行封印斬", "attack", 60, check_yahtzee, "ヤッツィー"),
     "スモール・エッジ": Card("スモール・エッジ", "attack", 25, lambda d: len(set(d)) >= 3, "3種類以上の出目"),
@@ -85,10 +85,16 @@ CARD_DB = {
     "女神の休息": Card("女神の休息", "heal", 15, lambda d: True, "無条件"), # 追加
     "癒しの波動": Card("癒しの波動", "heal", 25, check_pair, "ペア"), # 追加
     "エナジー・ドレイン": Card("エナジー・ドレイン", "heal", 45, lambda d: sum(d) >= 20, "合計20以上"), # 追加
-    "ナイト・シールド": Card("ナイト・シールド", "guard", 25, lambda d: True, "無条件"), # 追加
-    "ホーリー・バリア": Card("ホーリー・バリア", "guard", 45, lambda d: True, "無条件"), # 追加
+    "ナイト・シールド": Card("ナイト・シールド", "guard", 25, lambda d: True, "25ダメージ防ぐ"), # 追加
+    "ホーリー・バリア": Card("ホーリー・バリア", "guard", 45, lambda d: True, "45ダメージ防ぐ"), # 追加
     "ミラー・シールド": Card("ミラー・シールド", "guard", 1.0, lambda d: True, "100%反射"),
     "トゲトゲの盾": Card("トゲトゲの盾", "guard", 1.5, lambda d: True, "150%反射"),
+    "チクチクの盾": Card("トゲトゲの盾", "guard", 0.5, lambda d: True, "50%反射"),
+    "エナジー・ドレイン": Card("エナジー・ドレイン", "heal", 45, lambda d: sum(d) >= 20, "合計20以上"), # 追加
+    "ランダムシールド": Card("ランダムシールド", "guard", 25, lambda d: True, "．．．"), 
+    "ランダムシールド": Card("ランダムシールド", "guard", 45, lambda d: True, "．．．"), 
+    "ランダムシールド": Card("ランダムシールド", "guard", 1.0, lambda d: True, "．．．"),
+    "ランダムシールド": Card("ランダムシールド, "guard", 1.5, lambda d: True, "．．．"),
 }
 
 
@@ -101,6 +107,7 @@ INNATE_DECK = [
     Card("固有:等位の福音", "heal", 40, lambda d: len(set(d)) == 2 and any(d.count(x) == 3 for x in set(d)), "フルハウス"),
     Card("固有:轟力・大山波", "attack", 35, lambda d: sum(d) >= 22, "合計22以上"),
     Card("固有:静寂・小波斬", "attack", 25, lambda d: sum(d) <= 12, "合計12以下"),
+    Card("固有ちょいシールド", "guard", 15, lambda d: True, "15ダメージ防ぐ"), 
 ]
 
 def get_data(): return supabase.table("game_state").select("*").eq("id", 1).execute().data[0]
@@ -427,6 +434,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
