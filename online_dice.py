@@ -3,8 +3,17 @@ from supabase import create_client
 import time
 import random
 import streamlit.components.v1 as components
+# --- 0. ユーティリティ・安全対策 (最上部へ移動) ---
+def auto_refresh(interval=1.0):
+    """安全に再実行をかけるための関数"""
+    time.sleep(interval)
+    st.rerun()
+if "polling" not in st.session_state:
+    st.session_state.polling = False
 
-
+def stop_polling():
+    """ボタン操作時などにポーリングを停止する"""
+    st.session_state.polling = False
 
 # 効果音再生用関数
 def play_se(url):
@@ -281,7 +290,10 @@ pending_dmg = data.get("pending_damage", 0)
 # --- 防御側の処理 ---
 if not is_my_turn and current_phase == "ATK":
     st.info("⌛ 相手の攻撃を待っています…")
-    auto_refresh(1)
+elif current_phase == "DEF":
+    st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
+        # 防御ボタンの表示ロジック...
+  
 
 if not is_my_turn and current_phase == "DEF":
     st.warning(f"⚠️ 相手の攻撃！ **{pending_dmg}** ダメージ！")
@@ -352,12 +364,18 @@ if not is_my_turn and current_phase == "DEF":
     def auto_refresh(interval=1.0):
         time.sleep(interval)
         st.rerun()
-
+# ★ 共通ポーリング処理
+    if not st.session_state.polling:
+        st.session_state.polling = True
+        auto_refresh(1.5)
+    st.stop() # 相手のターンならここで止める
 # --- 攻撃側の待機表示 ---
 if is_my_turn and current_phase == "DEF":
     st.info("⌛ 相手の防御を待っています…")
-    auto_refresh(1)
-
+    if not st.session_state.polling:
+        st.session_state.polling = True
+        auto_refresh(1.5)
+    st.stop()
 
 # --- ダイスロール処理 ---
 if is_my_turn:
@@ -462,6 +480,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
