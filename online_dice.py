@@ -356,9 +356,7 @@ if not is_my_turn and current_phase == "DEF":
         update_db({f"hp{my_id}": data[f"hp{my_id}"] - pending_dmg, "pending_damage": 0, "phase": "ATK", "turn": f"P{my_id}", "turn_count": data["turn_count"]+1})
         st.rerun()
     st.stop()
-    def auto_refresh(interval=1.0):
-        time.sleep(interval)
-        st.rerun()
+
 # ★ 共通ポーリング処理
     if not st.session_state.polling:
         st.session_state.polling = True
@@ -475,6 +473,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
