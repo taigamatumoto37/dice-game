@@ -301,22 +301,25 @@ if not is_my_turn and current_phase == "DEF":
     cols = st.columns(len(guards) + 1)
     for i, g in enumerate(guards):
         if cols[i].button(
-    f"🛡️ {g.name}",
-    key=f"guard_{i}_{g.name}"):
-          upd = {
-            "pending_damage": 0,
-            "phase": "ATK",
-            "turn": f"P{my_id}",
-            "turn_count": data["turn_count"] + 1,
-        }
+            f"🛡️ {g.name}",
+            key=f"guard_{i}_{g.name}"
+        ):
+        # ★ ここで必ず初期化
+            upd = {
+                "pending_damage": 0,
+                "phase": "ATK",
+                "turn": f"P{my_id}",
+                "turn_count": data["turn_count"] + 1,
+            }
 
-        if g.name in my_hand:
+            if g.name in my_hand:
     # 通常ガード
-            upd[f"{me}_hand"] = [n for n in my_hand if n != g.name]
-        else:
+                upd[f"{me}_hand"] = [n for n in my_hand if n != g.name]
+            else:
     # ★ 固有ガード
-            upd[f"{me}_used_innate"] = data.get(f"{me}_used_innate", []) + [g.name]
-
+                upd[f"{me}_used_innate"] = (
+                data.get(f"{me}_used_innate", []) + [g.name]
+            )
                 
             
             # --- 反射・軽減ロジック ---
@@ -330,10 +333,7 @@ if not is_my_turn and current_phase == "DEF":
                     st.session_state.counter_finish = True
                 
                 st.success(f"✨ 反射！ 相手に {reflect_dmg} ダメージ返した！")
-                
-                # 「トゲトゲの盾」のような軽減併用タイプの場合
-                if "軽減" in g.cond_text:
-                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - (pending_dmg * 0.5))
+                 
             else:
                 # 通常のガード（軽減）
                 upd[f"hp{my_id}"] = data[f"hp{my_id}"] - max(0, pending_dmg - g.power)
@@ -456,6 +456,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
