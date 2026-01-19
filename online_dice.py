@@ -439,18 +439,31 @@ for idx, card in enumerate(pool):
         )
 
         if is_my_turn and is_ready and card.type != "guard":
-            if st.button("発動", key=f"atk_{idx}"):
-                stop_polling()
-                play_se(SE_URL)
-                upd = {}
+           if is_my_turn and is_ready and card.type != "guard":
+    if st.button("発動", key=f"atk_{idx}"):
+        stop_polling()
+        play_se(SE_URL)
+        upd = {}
 
-                if card.type == "attack":
-                    upd["pending_damage"] = card.power
-                    upd["phase"] = "DEF"
-                else:
-                    upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
-                    upd["turn"] = f"P{opp_id}"
-                    upd["turn_count"] = data["turn_count"] + 1
+        if card.type == "attack":
+            # 攻撃の場合は、相手の防御（DEFフェーズ）を待つ
+            upd["pending_damage"] = card.power
+            upd["phase"] = "DEF"
+        else:
+            # ★回復スキルの場合：回復処理後、即座にフェーズをATKに戻し相手のターンへ
+            upd[f"hp{my_id}"] = data[f"hp{my_id}"] + card.power
+            upd["turn"] = f"P{opp_id}"
+            upd["turn_count"] = data["turn_count"] + 1
+            upd["phase"] = "ATK"
+
+        # 使用済みカードの処理
+        if is_innate:
+            upd[f"{me}_used_innate"] = my_used_innate + [card.name]
+        else:
+            upd[f"{me}_hand"] = [n for n in my_hand_from_db if n != card.name]
+
+        update_db(upd)
+        st.rerun()
 
                 if is_innate:
                     upd[f"{me}_used_innate"] = my_used_innate + [card.name]
@@ -461,20 +474,32 @@ for idx, card in enumerate(pool):
                 st.rerun()
 
 
-if is_my_turn and st.button("ターンを終了してドロー"):
-    latest = get_data()
-    deck = latest.get("deck", [])
-    hand = list(latest.get(f"{me}_hand", []))
-    if deck: hand.append(deck.pop(0))
-    update_db({"deck": deck, f"{me}_hand": hand, "turn": f"P{opp_id}", "turn_count": latest["turn_count"] + 1})
-    play_se(SE_URL)
-    st.rerun()
-
+if is_my_turn:
+    if st.button("🎴 カードを引いて交代"):
+        latest = get_data()
+        deck = latest.get("deck", [])
+        hand = list(latest.get(f"{me}_hand", []))
+        
+        # 山札から1枚手札に加える
+        if deck:
+            hand.append(deck.pop(0))
+        
+        # 重要な変更：phaseを"ATK"に戻し、即座に相手のターン(P1 <-> P2)へ
+        update_db({
+            "deck": deck, 
+            f"{me}_hand": hand, 
+            "turn": f"P{opp_id}", 
+            "turn_count": latest["turn_count"] + 1,
+            "phase": "ATK" 
+        })
+        play_se(SE_URL)
+        st.rerun()
 with st.sidebar:
     if st.button("🚨 全リセット"):
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
