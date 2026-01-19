@@ -89,8 +89,8 @@ CARD_DB = {
     "ロー・ローラー": Card("ロー・ローラー", "attack", 35, lambda d: sum(d) <= 15, "合計15以下"),
     "プチ・ヒール": Card("プチ・ヒール", "heal", 10, lambda d: True, "無条件"),
     "光の防壁": Card("光の防壁", "heal", 35, lambda d: check_pair(d), "ペア"),
-    "アイアン・ウォール": Card("アイアン・ウォール", "guard", 15, lambda d: True, "無条件"),
-    "マジック・ミラー": Card("マジック・ミラー", "guard", 30, lambda d: True, "無条件"),
+    "アイアン・ウォール": Card("鎧", "guard", 20, lambda d: True, "20ダメージ防ぐ"),
+    "マジック・ミラー": Card("固めの鎧", "guard", 30, lambda d: True, "30ダメージ防ぐ"),
     "女神の休息": Card("女神の休息", "heal", 15, lambda d: True, "無条件"), # 追加
     "癒しの波動": Card("癒しの波動", "heal", 25, check_pair, "ペア"), # 追加
     "エナジー・ドレイン": Card("エナジー・ドレイン", "heal", 45, lambda d: sum(d) >= 20, "合計20以上"), # 追加
@@ -98,19 +98,19 @@ CARD_DB = {
     "ホーリー・バリア": Card("ホーリー・バリア", "guard", 45, lambda d: True, "45ダメージ防ぐ"), # 追加
     "ミラー・シールド": Card("ミラー・シールド", "guard", 1.0, lambda d: True, "100%反射"),
     "トゲトゲの盾": Card("トゲトゲの盾", "guard", 1.5, lambda d: True, "150%反射"),
-    "チクチクの盾": Card("トゲトゲの盾", "guard", 0.5, lambda d: True, "50%反射"),
+    "チクチクの盾": Card("チクチクの盾", "guard", 0.5, lambda d: True, "50%反射"),
     "エナジー・ドレイン": Card("エナジー・ドレイン", "heal", 45, lambda d: sum(d) >= 20, "合計20以上"), # 追加
-    "ランダムシールド": Card("ランダムシールド", "guard", 25, lambda d: True, "ランダム"), 
-    "ランダムシールド": Card("ランダムシールド", "guard", 45, lambda d: True, "ランダム"), 
-    "ランダムシールド": Card("ランダムシールド", "guard", 1.0, lambda d: True, "ランダム"),
-    "ランダムシールド": Card("ランダムシールド", "guard", 1.5, lambda d: True, "ランダム"),
+    "ランダムシールド": Card("ランダムシールド",① "guard", 25, lambda d: True, "ランダム"), 
+    "ランダムシールド": Card("ランダムシールド",1 "guard", 45, lambda d: True, "ランダム"), 
+    "ランダムシールド": Card("ランダムシールド"1⃣, "guard", 1.0, lambda d: True, "ランダム"),
+    "ランダムシールド": Card("ランダムシールド１", "guard", 1.5, lambda d: True, "ランダム"),
     
 }
 
 
 INNATE_DECK = [
-    Card("固有:トリニティ", "attack", 20, check_three, "スリーカード"),
-    Card("固有:五連光破斬", "attack", 30, check_straight, "ストレート"),
+    Card("固有:トリニティ", "attack", 30, check_three, "スリーカード"),
+    Card("固有:五連光破斬", "attack", 35, check_straight, "ストレート"),
     Card("固有:神罰 of 五連星", "attack", 50, check_yahtzee, "ヤッツィー"),
     Card("固有:双撃の構え", "attack", 15, check_pair, "ペア"),
     Card("固有:生命の共鳴", "heal", 25, lambda d: len(set([x for x in d if d.count(x) >= 2])) >= 2, "2ペア"),
@@ -475,6 +475,7 @@ with st.sidebar:
         all_cards = list(CARD_DB.keys()); new_deck = all_cards * 2; random.shuffle(new_deck)
         update_db({"hp1": 100, "hp2": 100, "p1_hand": [], "p2_hand": [], "p1_used_innate": [], "p2_used_innate": [], "turn": "P1", "turn_count": 0, "pending_damage": 0, "phase": "ATK", "deck": new_deck})
         st.rerun()
+
 
 
 
